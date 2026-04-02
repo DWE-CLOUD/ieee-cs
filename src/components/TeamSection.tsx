@@ -2,6 +2,7 @@ import { Code, Palette, Users, Settings, ArrowUpRight, X, Linkedin, Github, Crow
 import { useState, useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { api } from "@/lib/api";
+import { useHomeContent } from "@/components/home/HomeContentProvider";
 
 interface TeamMember {
   id: string;
@@ -53,6 +54,7 @@ const TeamSection = () => {
   const [cardRect, setCardRect] = useState<DOMRect | null>(null);
   const [teams, setTeams] = useState<Team[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const content = useHomeContent();
   const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
   const sectionRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -210,7 +212,7 @@ const TeamSection = () => {
 
   if (isLoading) {
     return (
-      <section className="bg-background py-24 px-8">
+      <section id="team" className="bg-background py-24 px-8">
         <div className="max-w-7xl mx-auto flex items-center justify-center py-20">
           <Loader2 className="w-8 h-8 animate-spin text-accent" />
         </div>
@@ -220,7 +222,7 @@ const TeamSection = () => {
 
   if (teams.length === 0) {
     return (
-      <section className="bg-background py-24 px-8">
+      <section id="team" className="bg-background py-24 px-8">
         <div className="max-w-7xl mx-auto text-center py-20">
           <Users className="w-16 h-16 mx-auto mb-4 text-muted-foreground/50" />
           <h2 className="font-serif text-3xl text-foreground mb-2">No Teams Yet</h2>
@@ -232,22 +234,21 @@ const TeamSection = () => {
 
   return (
     <>
-      <section className="bg-background py-16 md:py-24 px-4 md:px-8 overflow-hidden">
+      <section id="team" className="bg-background py-16 md:py-24 px-4 md:px-8 overflow-hidden">
         <div className="max-w-7xl mx-auto" ref={sectionRef}>
           {/* Header */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8 mb-12 md:mb-20">
             <div className="flex flex-col md:flex-row items-start gap-3 md:gap-6">
               <span className="text-xs uppercase tracking-widest text-muted-foreground whitespace-nowrap md:pt-4">
-                / We are IEEE CS /
+                {content.team.eyebrow}
               </span>
               <h2 className="font-serif text-4xl md:text-6xl lg:text-7xl text-foreground leading-none">
-                Team
+                {content.team.title}
               </h2>
             </div>
             <div className="flex items-end lg:justify-end">
               <p className="text-sm text-muted-foreground leading-relaxed max-w-sm">
-                A passionate group of students united by their love for technology, 
-                made of colleagues turned friends who genuinely enjoy working together.
+                {content.team.description}
               </p>
             </div>
           </div>
@@ -830,7 +831,7 @@ const TeamSection = () => {
                       to="/positions" 
                       className="w-full py-4 rounded-2xl bg-foreground text-background font-medium hover:opacity-90 transition-opacity flex items-center justify-center gap-2 group"
                     >
-                      <span>Join {selectedTeam.name} Team</span>
+                      <span>{content.team.joinCtaLabel} {selectedTeam.name}</span>
                       <ArrowUpRight className="w-5 h-5 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
                     </Link>
                   </div>

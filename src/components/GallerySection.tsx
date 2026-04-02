@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
 import { ChevronLeft, ChevronRight, Camera, Expand, X, ArrowRight, Loader2 } from "lucide-react";
-import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
+import SmartLink from "@/components/SmartLink";
+import { useHomeContent } from "@/components/home/HomeContentProvider";
 
 interface GalleryImage {
   id: string;
@@ -20,6 +21,7 @@ const GallerySection = () => {
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [galleryImages, setGalleryImages] = useState<GalleryImage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const content = useHomeContent();
 
   useEffect(() => {
     fetchGalleryImages();
@@ -126,24 +128,24 @@ const GallerySection = () => {
               <div className="flex items-center gap-3">
                 <Camera className="w-5 h-5 text-background/60" />
                 <span className="text-xs uppercase tracking-widest text-background/60">
-                  Moments Captured
+                  {content.gallery.eyebrow}
                 </span>
               </div>
               <h2 className="font-serif text-4xl md:text-6xl lg:text-7xl text-background leading-none">
-                Event Gallery
+                {content.gallery.title}
               </h2>
             </div>
             <div className="flex flex-col items-start md:items-end gap-4">
               <p className="text-sm text-background/60 max-w-sm leading-relaxed">
-                Relive the memories from our workshops, hackathons, and community events.
+                {content.gallery.description}
               </p>
-              <Link 
-                to="/gallery" 
+              <SmartLink 
+                href={content.gallery.ctaHref}
                 className="group inline-flex items-center gap-2 text-sm font-medium text-background hover:text-background/80 transition-colors"
               >
-                View Full Gallery
+                {content.gallery.ctaLabel}
                 <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
-              </Link>
+              </SmartLink>
             </div>
           </div>
 

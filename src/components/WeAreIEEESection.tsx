@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import AsteriskIcon from "./icons/AsteriskIcon";
 import DecorativeArrow from "./icons/DecorativeArrow";
+import { useHomeContent } from "@/components/home/HomeContentProvider";
 
 const WeAreIEEESection = () => {
   const sectionRef = useRef<HTMLDivElement>(null);
   const [scrollProgress, setScrollProgress] = useState(0);
+  const content = useHomeContent();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -33,6 +35,7 @@ const WeAreIEEESection = () => {
 
   return (
     <section
+      id="about"
       ref={sectionRef}
       className="relative min-h-screen flex items-center justify-center overflow-hidden bg-background py-20"
     >
@@ -66,7 +69,7 @@ const WeAreIEEESection = () => {
               ${activeWord === 0 ? 'text-foreground' : 'text-foreground/15'}
             `}
           >
-            We
+            {content.about.wordOne}
           </h2>
         </div>
 
@@ -90,7 +93,7 @@ const WeAreIEEESection = () => {
               ${activeWord === 1 ? 'text-foreground' : 'text-foreground/15'}
             `}
           >
-            are
+            {content.about.wordTwo}
           </h2>
           <div 
             className={`
@@ -118,7 +121,7 @@ const WeAreIEEESection = () => {
               ${activeWord === 2 ? 'text-foreground' : 'text-foreground/15'}
             `}
           >
-            IEEE
+            {content.about.wordThree}
           </h2>
         </div>
       </div>
@@ -139,7 +142,7 @@ const WeAreIEEESection = () => {
         className="absolute bottom-16 left-1/2 -translate-x-1/2 flex items-center gap-4 transition-opacity duration-500"
         style={{ opacity: scrollProgress > 0.1 ? 1 : 0 }}
       >
-        {['We', 'are', 'IEEE'].map((word, i) => (
+        {[content.about.wordOne, content.about.wordTwo, content.about.wordThree].map((word, i) => (
           <div
             key={word}
             className={`

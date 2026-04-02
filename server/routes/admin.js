@@ -71,6 +71,39 @@ router.get('/dashboard', requireAuth, async (req, res) => {
   }
 });
 
+router.get('/site-content/home', requireAdmin, async (_req, res) => {
+  try {
+    const { rows } = await query('SELECT content FROM site_content WHERE key = $1', ['home']);
+    res.json(rows[0]?.content || {});
+  } catch (error) {
+    sendError(res, error);
+  }
+});
+
+router.patch('/site-content/home', requireAdmin, async (req, res) => {
+  const content = req.body;
+  if (!content || typeof content !== 'object' || Array.isArray(content)) {
+    res.status(400).json({ error: 'A content object is required' });
+    return;
+  }
+
+  try {
+    await query(
+      `
+        INSERT INTO site_content (key, content)
+        VALUES ('home', $1::jsonb)
+        ON CONFLICT (key)
+        DO UPDATE SET content = $1::jsonb
+      `,
+      [JSON.stringify(content)]
+    );
+
+    res.json({ ok: true });
+  } catch (error) {
+    sendError(res, error);
+  }
+});
+
 router.post('/positions', requireAuth, async (req, res) => {
   const data = req.body || {};
   const teamId = data.team_id || null;

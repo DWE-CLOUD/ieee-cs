@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { ArrowRight, Calendar, MapPin, Clock, ExternalLink, Sparkles } from "lucide-react";
 import { api } from "@/lib/api";
 import { format, isToday, isTomorrow, differenceInDays } from "date-fns";
+import SmartLink from "@/components/SmartLink";
+import { useHomeContent } from "@/components/home/HomeContentProvider";
 
 interface Event {
   id: string;
@@ -20,6 +22,7 @@ interface Event {
 const UpcomingEvents = () => {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
+  const content = useHomeContent();
 
   useEffect(() => {
     fetchEvents();
@@ -98,22 +101,22 @@ const UpcomingEvents = () => {
           <div>
             <span className="inline-flex items-center gap-2 text-xs uppercase tracking-widest text-accent mb-3">
               <Sparkles className="w-3 h-3" />
-              What's happening
+              {content.upcomingEvents.eyebrow}
             </span>
             <h2 className="font-serif text-4xl md:text-5xl text-foreground">
-              Upcoming Events
+              {content.upcomingEvents.title}
             </h2>
             <p className="text-muted-foreground mt-2 max-w-md">
-              Join us for workshops, hackathons, and networking opportunities
+              {content.upcomingEvents.description}
             </p>
           </div>
-          <a
-            href="#"
+          <SmartLink
+            href={content.upcomingEvents.viewAllHref}
             className="hidden md:flex items-center gap-2 px-5 py-2.5 rounded-full border border-border text-sm font-medium text-foreground hover:bg-muted transition-all group"
           >
-            View all events
+            {content.upcomingEvents.viewAllLabel}
             <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
-          </a>
+          </SmartLink>
         </div>
 
         {loading ? (
@@ -220,18 +223,18 @@ const UpcomingEvents = () => {
         )}
 
         {/* Mobile view all link */}
-        <a
-          href="#"
+        <SmartLink
+          href={content.upcomingEvents.viewAllHref}
           className="md:hidden flex items-center justify-center gap-2 mt-8 px-5 py-2.5 rounded-full border border-border text-sm font-medium text-foreground hover:bg-muted transition-all mx-auto w-fit"
         >
-          View all events
+          {content.upcomingEvents.viewAllLabel}
           <ArrowRight className="w-4 h-4" />
-        </a>
+        </SmartLink>
 
         {/* Empty state hint for admins */}
         {events.length === 0 && !loading && (
           <p className="text-center text-muted-foreground text-sm mt-6">
-            These are placeholder events. Add real events from the admin dashboard.
+            {content.upcomingEvents.emptyHint}
           </p>
         )}
       </div>

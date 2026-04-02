@@ -1,5 +1,6 @@
 import AsteriskIcon from "./icons/AsteriskIcon";
 import { ArrowRight, Plus } from "lucide-react";
+import { useHomeContent } from "@/components/home/HomeContentProvider";
 
 const MarqueeItem = ({ text, icon }: { text: string; icon: "asterisk" | "arrow" | "plus" }) => {
   return (
@@ -15,18 +16,12 @@ const MarqueeItem = ({ text, icon }: { text: string; icon: "asterisk" | "arrow" 
 };
 
 const Marquee = () => {
-  const items = [
-    { text: "HACKATHONS", icon: "asterisk" as const },
-    { text: "WORKSHOPS", icon: "arrow" as const },
-    { text: "AI & ML", icon: "asterisk" as const },
-    { text: "WEB DEV", icon: "plus" as const },
-    { text: "CYBERSECURITY", icon: "asterisk" as const },
-    { text: "CODING", icon: "arrow" as const },
-    { text: "CLOUD", icon: "asterisk" as const },
-    { text: "NETWORKING", icon: "arrow" as const },
-    { text: "OPEN SOURCE", icon: "asterisk" as const },
-    { text: "RESEARCH", icon: "arrow" as const },
-  ];
+  const content = useHomeContent();
+  const icons = ["asterisk", "arrow", "plus"] as const;
+  const items = content.marquee.items.map((text, index) => ({
+    text,
+    icon: icons[index % icons.length],
+  }));
 
   return (
     <div className="py-6 bg-background overflow-hidden border-y border-border/30">

@@ -158,6 +158,13 @@ CREATE TABLE IF NOT EXISTS gallery_collaborators (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+CREATE TABLE IF NOT EXISTS site_content (
+  key TEXT PRIMARY KEY,
+  content JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE INDEX IF NOT EXISTS idx_positions_team_id ON positions(team_id);
 CREATE INDEX IF NOT EXISTS idx_applications_position_id ON applications(position_id);
 CREATE INDEX IF NOT EXISTS idx_applications_user_id ON applications(user_id);
@@ -218,6 +225,12 @@ BEFORE UPDATE ON gallery_images
 FOR EACH ROW
 EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_site_content_updated_at ON site_content;
+CREATE TRIGGER update_site_content_updated_at
+BEFORE UPDATE ON site_content
+FOR EACH ROW
+EXECUTE FUNCTION update_updated_at_column();
+
 DROP TRIGGER IF EXISTS update_applications_updated_at ON applications;
 CREATE TRIGGER update_applications_updated_at
 BEFORE UPDATE ON applications
@@ -231,3 +244,7 @@ INSERT INTO teams (name, description, color) VALUES
   ('Events', 'Event planning and coordination team', '#F59E0B'),
   ('Content', 'Content creation and documentation team', '#8B5CF6')
 ON CONFLICT (name) DO NOTHING;
+
+INSERT INTO site_content (key, content)
+VALUES ('home', '{}'::jsonb)
+ON CONFLICT (key) DO NOTHING;

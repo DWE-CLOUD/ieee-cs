@@ -1,11 +1,13 @@
 import { ArrowRight, Sparkles } from "lucide-react";
-import { Link } from "react-router-dom";
 import DecorativeArrow from "./icons/DecorativeArrow";
 import AsteriskIcon from "./icons/AsteriskIcon";
 import { useEffect, useState } from "react";
+import SmartLink from "@/components/SmartLink";
+import { useHomeContent } from "@/components/home/HomeContentProvider";
 
 const HeroSection = () => {
   const [isVisible, setIsVisible] = useState(false);
+  const content = useHomeContent();
 
   useEffect(() => {
     const timer = setTimeout(() => setIsVisible(true), 100);
@@ -35,7 +37,7 @@ const HeroSection = () => {
             >
               <Sparkles className="w-4 h-4 text-accent" />
               <span className="text-xs font-medium text-accent uppercase tracking-wider">
-                Innovate • Learn • Build
+                {content.hero.badge}
               </span>
             </div>
 
@@ -47,11 +49,11 @@ const HeroSection = () => {
               `}
               style={{ transitionDelay: '100ms' }}
             >
-              We build the
+              {content.hero.titleLine1}
               <br />
               <span className="inline-flex items-center gap-3 md:gap-4 flex-wrap mt-2">
                 <DecorativeArrow className="w-10 h-10 md:w-12 md:h-12 lg:w-14 lg:h-14 text-accent" />
-                <span>future of</span>
+                <span>{content.hero.titleLine2}</span>
                 <span className="inline-flex items-center justify-center w-10 h-10 md:w-12 md:h-12 lg:w-14 lg:h-14 rounded-full bg-muted shadow-soft">
                   <AsteriskIcon className="w-5 h-5 md:w-6 md:h-6 lg:w-7 lg:h-7 text-foreground" />
                 </span>
@@ -64,7 +66,7 @@ const HeroSection = () => {
                 `}
                 style={{ transitionDelay: '200ms' }}
               >
-                technology.
+                {content.hero.titleLine3}
               </span>
             </h1>
           </div>
@@ -82,27 +84,25 @@ const HeroSection = () => {
             <div className="relative">
               <div className="absolute -left-3 top-0 bottom-0 w-0.5 bg-gradient-to-b from-accent via-accent/50 to-transparent" />
               <p className="text-sm leading-relaxed text-muted-foreground max-w-sm pl-4">
-                <span className="font-semibold text-foreground">IEEE Computer Society</span> is the 
-                premier technical club at our college. We empower students to innovate, 
-                learn, and build cutting-edge technology together.
+                {content.hero.description}
               </p>
             </div>
 
             {/* CTA buttons */}
             <div className="flex flex-col sm:flex-row gap-3">
-              <Link
-                to="/gallery"
+              <SmartLink
+                href={content.hero.primaryCtaHref}
                 className="group inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-foreground text-primary-foreground text-sm font-medium hover:bg-foreground/90 transition-all duration-300 shadow-soft hover:shadow-elegant"
               >
                 <ArrowRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-0.5" />
-                Explore our work
-              </Link>
-              <Link
-                to="/positions"
+                {content.hero.primaryCtaLabel}
+              </SmartLink>
+              <SmartLink
+                href={content.hero.secondaryCtaHref}
                 className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full border border-border text-foreground text-sm font-medium hover:bg-muted/50 transition-all duration-300"
               >
-                Become a member
-              </Link>
+                {content.hero.secondaryCtaLabel}
+              </SmartLink>
             </div>
 
             {/* Stats teaser */}
@@ -114,20 +114,15 @@ const HeroSection = () => {
               `}
               style={{ transitionDelay: '500ms' }}
             >
-              <div>
-                <span className="font-serif text-2xl text-foreground">500+</span>
-                <p className="text-xs text-muted-foreground">Members</p>
-              </div>
-              <div className="w-px h-10 bg-border/50" />
-              <div>
-                <span className="font-serif text-2xl text-foreground">50+</span>
-                <p className="text-xs text-muted-foreground">Events/Year</p>
-              </div>
-              <div className="w-px h-10 bg-border/50" />
-              <div>
-                <span className="font-serif text-2xl text-foreground">25+</span>
-                <p className="text-xs text-muted-foreground">Wins</p>
-              </div>
+              {content.hero.teaserStats.map((stat, index) => (
+                <div key={`${stat.value}-${stat.label}`} className="contents">
+                  <div>
+                    <span className="font-serif text-2xl text-foreground">{stat.value}</span>
+                    <p className="text-xs text-muted-foreground">{stat.label}</p>
+                  </div>
+                  {index < content.hero.teaserStats.length - 1 && <div className="w-px h-10 bg-border/50" />}
+                </div>
+              ))}
             </div>
           </div>
         </div>

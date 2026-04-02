@@ -1,52 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import AsteriskIcon from "./icons/AsteriskIcon";
-
-const events = [
-  {
-    id: 1,
-    step: "01",
-    title: "HackFest 2024",
-    subtitle: "Annual Hackathon",
-    description: "Our flagship 24-hour hackathon where 200+ students built innovative solutions. Teams competed for prizes worth $5000.",
-    highlights: [
-      "200+ participants from 15 colleges",
-      "50 innovative projects submitted",
-      "Industry mentors from top tech companies",
-      "Best project won internship opportunities",
-    ],
-  },
-  {
-    id: 2,
-    step: "02", 
-    title: "TechTalk Series",
-    subtitle: "Workshop & Seminars",
-    description: "Monthly technical workshops covering cutting-edge technologies. Industry experts shared insights on AI, Cloud, and Web3.",
-    highlights: [
-      "12 workshops conducted this year",
-      "Guest speakers from Google & Microsoft",
-      "Hands-on coding sessions",
-      "Certificate of participation",
-    ],
-  },
-  {
-    id: 3,
-    step: "03",
-    title: "CodeSprint 2024",
-    subtitle: "Competitive Programming",
-    description: "Intense coding competition testing algorithmic skills. Top performers qualified for regional IEEE competitions.",
-    highlights: [
-      "500+ problems solved collectively",
-      "Top 3 qualified for regionals",
-      "Cash prizes for winners",
-      "Coding resources provided",
-    ],
-  },
-];
+import { useHomeContent } from "@/components/home/HomeContentProvider";
 
 const EventsTimeline = () => {
   const sectionRef = useRef<HTMLDivElement>(null);
   const [scrollProgress, setScrollProgress] = useState(0);
   const [activeEvent, setActiveEvent] = useState(0);
+  const content = useHomeContent();
+  const events = content.journey.items;
 
   useEffect(() => {
     const handleScroll = () => {
@@ -76,26 +37,24 @@ const EventsTimeline = () => {
   }, []);
 
   return (
-    <section ref={sectionRef} className="bg-background py-20 px-8">
+    <section id="journey" ref={sectionRef} className="bg-background py-20 px-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-16">
           <div>
             <span className="text-xs uppercase tracking-widest text-muted-foreground mb-4 block">
-              / Our Journey /
+              {content.journey.eyebrow}
             </span>
             <h2 className="font-serif text-4xl md:text-5xl lg:text-6xl text-foreground leading-tight">
-              Building Community
+              {content.journey.titleLine1}
               <br />
-              Through Events
+              {content.journey.titleLine2}
               <span className="inline-block w-16 h-1.5 bg-foreground ml-4 align-middle rounded-full" />
             </h2>
           </div>
           <div className="flex items-end">
             <p className="text-sm text-muted-foreground leading-relaxed max-w-md">
-              From hackathons to workshops, we create opportunities for students to learn, 
-              build, and grow together. Each event is designed to push boundaries and 
-              foster innovation in our tech community.
+              {content.journey.description}
             </p>
           </div>
         </div>
@@ -129,7 +88,7 @@ const EventsTimeline = () => {
               
               return (
                 <button
-                  key={event.id}
+                  key={event.step}
                   onClick={() => setActiveEvent(index)}
                   className={`
                     flex items-center gap-2 transition-all duration-500
@@ -235,15 +194,15 @@ const EventsTimeline = () => {
               {/* Stats */}
               <div className="grid grid-cols-2 gap-4 mt-8">
                 <div>
-                  <span className="font-serif text-4xl">{activeEvent === 0 ? '200+' : activeEvent === 1 ? '12' : '500+'}</span>
+                  <span className="font-serif text-4xl">{events[activeEvent].metricOneValue}</span>
                   <p className="text-xs text-primary-foreground/60 mt-1">
-                    {activeEvent === 0 ? 'Participants' : activeEvent === 1 ? 'Workshops' : 'Problems Solved'}
+                    {events[activeEvent].metricOneLabel}
                   </p>
                 </div>
                 <div>
-                  <span className="font-serif text-4xl">{activeEvent === 0 ? '50' : activeEvent === 1 ? '24+' : '3'}</span>
+                  <span className="font-serif text-4xl">{events[activeEvent].metricTwoValue}</span>
                   <p className="text-xs text-primary-foreground/60 mt-1">
-                    {activeEvent === 0 ? 'Projects Built' : activeEvent === 1 ? 'Hours of Content' : 'Regional Qualifiers'}
+                    {events[activeEvent].metricTwoLabel}
                   </p>
                 </div>
               </div>

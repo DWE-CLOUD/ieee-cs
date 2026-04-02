@@ -9,22 +9,25 @@ import GallerySection from "@/components/GallerySection";
 import UpcomingEvents from "@/components/UpcomingEvents";
 import Footer from "@/components/Footer";
 import FloatingNav from "@/components/FloatingNav";
+import { HomeContentProvider } from "@/components/home/HomeContentProvider";
 
 const Index = () => {
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
-      <HeroSection />
-      <Marquee />
-      <StatsSection />
-      <WeAreIEEESection />
-      <EventsTimeline />
-      <TeamSection />
-      <GallerySection />
-      <UpcomingEvents />
-      <Footer />
-      <FloatingNav />
-    </div>
+    <HomeContentProvider>
+      <div id="top" className="min-h-screen bg-background">
+        <Header />
+        <HeroSection />
+        <Marquee />
+        <StatsSection />
+        <WeAreIEEESection />
+        <EventsTimeline />
+        <TeamSection />
+        <GallerySection />
+        <UpcomingEvents />
+        <Footer />
+        <FloatingNav />
+      </div>
+    </HomeContentProvider>
   );
 };
 

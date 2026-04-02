@@ -13,10 +13,11 @@ import ApplicationDetailModal from '@/components/admin/ApplicationDetailModal';
 import ManagerAssignment from '@/components/admin/ManagerAssignment';
 import TeamMembersManager from '@/components/admin/TeamMembersManager';
 import GalleryManager from '@/components/admin/GalleryManager';
+import LandingContentManager from '@/components/admin/LandingContentManager';
 import { format } from 'date-fns';
 import { api } from '@/lib/api';
 
-type TabType = 'positions' | 'teams' | 'applications' | 'users' | 'events' | 'members' | 'gallery';
+type TabType = 'positions' | 'teams' | 'applications' | 'users' | 'events' | 'members' | 'gallery' | 'landing';
 
 interface Event {
   id: string;
@@ -229,6 +230,7 @@ const Admin = () => {
     { id: 'members' as TabType, label: 'Members', icon: Award, count: null },
     { id: 'events' as TabType, label: 'Events', icon: CalendarDays, count: events.length },
     { id: 'gallery' as TabType, label: 'Gallery', icon: Image, count: null },
+    { id: 'landing' as TabType, label: 'Landing', icon: Settings, count: null },
     { id: 'applications' as TabType, label: 'Applications', icon: FileText, count: applications.filter(a => a.status === 'pending').length },
     { id: 'users' as TabType, label: 'Users', icon: UserCheck, count: users.length },
   ];
@@ -406,6 +408,8 @@ const Admin = () => {
                     <GalleryManager />
                   </div>
                 )}
+
+                {activeTab === 'landing' && <LandingContentManager />}
 
                 {/* Events Tab */}
                 {activeTab === 'events' && (

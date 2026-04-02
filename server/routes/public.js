@@ -25,6 +25,15 @@ router.get('/health', (_req, res) => {
   res.json({ ok: true });
 });
 
+router.get('/site-content/home', async (_req, res) => {
+  try {
+    const { rows } = await query('SELECT content FROM site_content WHERE key = $1', ['home']);
+    res.json(rows[0]?.content || {});
+  } catch (error) {
+    sendError(res, error);
+  }
+});
+
 router.get('/auth/session', async (req, res) => {
   if (!req.viewer) {
     res.json({

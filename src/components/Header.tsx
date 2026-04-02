@@ -44,13 +44,13 @@ const Header = () => {
     >
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         {/* Logo */}
-        <a href="/" className="flex items-center gap-3 group">
+        <Link to="/" className="flex items-center gap-3 group">
           <img 
             src={ieeeLogo} 
             alt="IEEE Computer Society" 
             className="h-10 w-auto object-contain transition-transform duration-300 group-hover:scale-105"
           />
-        </a>
+        </Link>
 
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center gap-1">

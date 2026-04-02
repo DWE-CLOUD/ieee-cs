@@ -54,7 +54,7 @@ const FloatingNav = () => {
   }, []);
 
   const navItems = [
-    { name: "Home", icon: Home, href: "#", isRoute: false },
+    { name: "Home", icon: Home, href: "#top", isRoute: false },
     { name: "About", icon: Info, href: "#about", isRoute: false },
     { name: "Events", icon: Calendar, href: "#events", isRoute: false },
     { name: "Team", icon: Users, href: "#team", isRoute: false },
@@ -78,7 +78,7 @@ const FloatingNav = () => {
       <div className="flex items-center gap-1 bg-background/80 backdrop-blur-2xl px-2 py-2 rounded-full shadow-elegant border border-border/60">
         {/* Logo pill */}
         <a 
-          href="#"
+          href="#top"
           onClick={() => handleClick("Home")}
           className="flex items-center justify-center h-10 px-3 rounded-full bg-foreground mr-1 transition-transform duration-300 hover:scale-105"
         >
