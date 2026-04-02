@@ -43,7 +43,7 @@ app.use('/api', publicRoutes);
 app.use('/api/admin', adminRoutes);
 
 app.use(express.static(distDir));
-app.get('*', (req, res, next) => {
+app.use((req, res, next) => {
   if (req.path.startsWith('/api/')) {
     next();
     return;
