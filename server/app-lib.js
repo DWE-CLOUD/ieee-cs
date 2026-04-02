@@ -43,7 +43,13 @@ export const toSlug = (value) =>
     .replace(/^-+|-+$/g, '') || 'file';
 
 export const allowedOrigins = new Set(
-  ['http://localhost:5173', 'http://127.0.0.1:5173', ...config.allowedOrigins, config.appUrl]
+  [
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+    ...config.allowedOrigins,
+    config.appUrl,
+    config.railwayPublicDomain ? `https://${config.railwayPublicDomain}` : '',
+  ]
     .filter(Boolean)
     .map((origin) => origin.toLowerCase())
 );

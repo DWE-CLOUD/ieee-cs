@@ -16,22 +16,52 @@ import adminRoutes from './routes/admin.js';
 
 const app = express();
 
+const normalizeHost = (value) => {
+  const rawValue = String(value || '').trim().toLowerCase();
+  if (!rawValue) {
+    return '';
+  }
+
+  try {
+    return new URL(`https://${rawValue}`).host.toLowerCase();
+  } catch {
+    return rawValue;
+  }
+};
+
+const getRequestHost = (req) =>
+  normalizeHost(req.headers['x-forwarded-host'] || req.headers.host || '');
+
+const isSameHostOrigin = (origin, req) => {
+  try {
+    const originUrl = new URL(origin);
+    return normalizeHost(originUrl.host) === getRequestHost(req);
+  } catch {
+    return false;
+  }
+};
+
 app.use(
-  cors({
-    origin(origin, callback) {
-      if (!origin) {
-        callback(null, true);
-        return;
-      }
+  cors((req, callback) => {
+    const origin = req.header('Origin');
 
-      if (allowedOrigins.has(origin.toLowerCase())) {
-        callback(null, true);
-        return;
-      }
+    if (!origin) {
+      callback(null, { origin: true, credentials: true });
+      return;
+    }
 
-      callback(new Error(`Origin ${origin} not allowed by CORS`));
-    },
-    credentials: true,
+    const normalizedOrigin = origin.toLowerCase();
+    const allowRequest =
+      allowedOrigins.size === 0 ||
+      allowedOrigins.has(normalizedOrigin) ||
+      isSameHostOrigin(origin, req);
+
+    if (allowRequest) {
+      callback(null, { origin: true, credentials: true });
+      return;
+    }
+
+    callback(new Error(`Origin ${origin} not allowed by CORS`));
   })
 );
 app.use(cookieParser());
@@ -43,7 +73,7 @@ app.use('/api', publicRoutes);
 app.use('/api/admin', adminRoutes);
 
 app.use(express.static(distDir));
-app.get('*', (req, res, next) => {
+app.use((req, res, next) => {
   if (req.path.startsWith('/api/')) {
     next();
     return;

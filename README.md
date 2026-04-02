@@ -1,140 +1,257 @@
-# Perfect Pixel Platform
+# Ieee Cs
 
-This project no longer depends on Supabase at runtime.
+This app is now set up to run fully on Railway without Supabase.
 
-It now runs as:
+The stack is:
 
-- `React + Vite` frontend
-- `Express` backend in the same repo
-- `PostgreSQL` database
-- local file uploads for avatars, gallery images, and application files
+- frontend: React + Vite
+- backend: Express
+- database: PostgreSQL
+- file storage: local uploads directory backed by a Railway volume
 
-The stack is designed to run entirely on Railway with:
+Everything is meant to run in one Railway web service plus one Railway Postgres service.
 
-- one app service for the website + API
-- one Railway PostgreSQL service
-- one mounted Railway volume for uploads
+## What you need before starting
 
-## Local development
+Make sure you have:
 
-1. Install dependencies:
+1. a GitHub repo with this code pushed
+2. a Railway account
+3. one email address you want to use as the first admin account
+4. a random long secret string for JWT sessions
 
-```sh
-npm install
-```
+## Step-by-step Railway deployment
 
-2. Create `.env` from `.env.example`.
+### Step 1: Push the project to GitHub
 
-3. Start the backend:
-
-```sh
-npm run start
-```
-
-4. In another terminal, start Vite:
+If you have not already done this:
 
 ```sh
-npm run dev
+git add .
+git commit -m "Prepare Railway deployment"
+git push
 ```
 
-Vite proxies `/api` and `/uploads` to `http://localhost:3000`.
+### Step 2: Create a new Railway project
 
-## Railway deployment
+1. Open Railway.
+2. Click `New Project`.
+3. Choose `Deploy from GitHub repo`.
+4. Select this repository.
 
-### 1. Create the project
+Railway will create your main app service from the repo.
 
-- Push this repo to GitHub.
-- In Railway, create a new project from the repo.
-- Add a PostgreSQL service to the same Railway project.
+### Step 3: Add PostgreSQL
 
-### 2. Configure the app service
+1. Inside the same Railway project, click `New`.
+2. Add a `PostgreSQL` service.
+3. Wait until it finishes provisioning.
 
-Set these variables on the web service:
+Your app needs the Postgres `DATABASE_URL` from this Railway Postgres service.
 
-- `DATABASE_URL`
-  Railway will usually inject this automatically after you link the Postgres service.
-- `JWT_SECRET`
-  Use a long random value.
-- `ADMIN_EMAILS`
-  Comma-separated list of emails that should become admins when they sign up.
-- `PUBLIC_APP_URL`
-  Your Railway-generated domain or custom domain, for example `https://your-app.up.railway.app`
-- `ALLOWED_ORIGINS`
-  Usually the same value as `PUBLIC_APP_URL`
+### Step 4: Attach a volume for uploads
 
-Optional:
+This app stores uploaded files on disk, so you must add a volume or files will disappear after redeploys.
 
-- `UPLOADS_DIR`
-  Leave unset if your Railway volume is mounted to `/app/data/uploads`.
-
-### 3. Add a Railway volume
-
-Create a volume for the web service and mount it at:
+1. Open your web service in Railway.
+2. Go to the storage/volumes section.
+3. Create a volume.
+4. Mount it at:
 
 ```txt
 /app/data/uploads
 ```
 
-This stores:
+This path matches the app defaults.
 
-- public avatars
-- public gallery images
-- private application uploads/resumes
+The volume will hold:
 
-Without the volume, uploaded files will be lost on redeploy.
+- avatars
+- gallery images
+- application uploads and resumes
 
-### 4. Deploy
+### Step 5: Set environment variables
 
-Railway should detect:
+Open the web service variables and set these:
+
+```txt
+DATABASE_URL=<Railway Postgres DATABASE_URL>
+JWT_SECRET=<long-random-secret>
+ADMIN_EMAILS=your-email@example.com
+PUBLIC_APP_URL=https://your-service.up.railway.app
+ALLOWED_ORIGINS=https://your-service.up.railway.app
+```
+
+Notes:
+
+- `DATABASE_URL`: usually Railway can provide this from the Postgres service connection
+- `JWT_SECRET`: use a long random value, not a simple word
+- `ADMIN_EMAILS`: comma-separated if you want more than one admin email
+- `PUBLIC_APP_URL`: use your Railway public URL first, then replace it later with your custom domain if needed
+- `ALLOWED_ORIGINS`: should match the frontend URL that will open the app in the browser
+
+Optional:
+
+```txt
+UPLOADS_DIR=/app/data/uploads
+SESSION_COOKIE_NAME=ppp_session
+```
+
+You usually do not need to set those because the defaults already match Railway.
+
+### Step 6: Confirm build and start commands
+
+Railway should use:
 
 - build command: `npm run build`
 - start command: `npm run start`
 
-The server exposes a health endpoint at:
+If Railway does not auto-detect them, set them manually.
+
+### Step 7: Deploy
+
+Trigger a deploy from Railway.
+
+When the deploy finishes:
+
+1. open the generated Railway URL
+2. confirm the homepage loads
+3. confirm `https://your-service.up.railway.app/api/health` returns a healthy response
+
+### Step 8: Create the first admin account
+
+This app auto-assigns admin access when a newly registered email matches `ADMIN_EMAILS`.
+
+To create the first admin:
+
+1. open `/auth`
+2. sign up using the same email you put in `ADMIN_EMAILS`
+3. log in
+4. open `/admin`
+
+If the email matches, you should have admin access immediately.
+
+### Step 9: Add your real content
+
+After admin login, go through the admin dashboard and add:
+
+1. teams
+2. positions
+3. events
+4. gallery albums
+5. gallery images
+6. manager assignments if needed
+
+### Step 10: Add a custom domain
+
+If you want your own domain:
+
+1. add the custom domain in Railway
+2. update DNS as Railway tells you
+3. once the domain works, update:
 
 ```txt
-/api/health
+PUBLIC_APP_URL=https://yourdomain.com
+ALLOWED_ORIGINS=https://yourdomain.com
 ```
 
-### 5. Bootstrap the admin account
+Then redeploy.
 
-- Add your email to `ADMIN_EMAILS`
-- deploy
-- sign up through `/auth`
+## Local development
 
-That account will receive the `admin` role automatically.
+### Step 1: Install dependencies
 
-## Database behavior
+```sh
+npm install
+```
 
-- The backend bootstraps the schema automatically on startup.
-- Default teams are inserted automatically if they do not already exist.
+### Step 2: Create a local env file
 
-## Supabase migration notes
+Copy `.env.example` to `.env` and fill it in.
 
-This codebase has been migrated off client-side Supabase access, but existing Supabase data is not auto-imported by default.
+Example:
 
-What is already handled:
+```txt
+DATABASE_URL=postgresql://postgres:password@localhost:5432/perfect_pixel_platform
+JWT_SECRET=replace-with-a-long-random-secret
+ADMIN_EMAILS=you@example.com
+PUBLIC_APP_URL=http://localhost:3000
+ALLOWED_ORIGINS=http://localhost:8080
+```
 
-- schema replacement
-- custom auth/session layer
-- file upload/storage replacement
-- Railway-compatible backend deployment
+### Step 3: Start the backend
 
-What you may still need if you already have live Supabase data:
+```sh
+npm run start
+```
 
-- export/import existing content tables into Railway Postgres
-- recreate or manually migrate existing user accounts
-- re-upload or copy existing Supabase storage objects if you need old files preserved
+### Step 4: Start the frontend
 
-## Verification
+In another terminal:
 
-Verified in this repo:
+```sh
+npm run dev
+```
+
+Vite proxies `/api` and `/uploads` to the backend on port `3000`.
+
+Frontend dev URL:
+
+```txt
+http://localhost:8080
+```
+
+Backend URL:
+
+```txt
+http://localhost:3000
+```
+
+## First-time behavior
+
+On startup, the backend will:
+
+1. connect to PostgreSQL
+2. create the required tables if they do not exist
+3. create default teams if they do not exist
+4. ensure the upload directories exist
+
+You do not need to run Supabase migrations anymore.
+
+## Important limitation if you already used Supabase
+
+This repo is migrated off Supabase runtime usage, but your old Supabase data is not automatically copied into Railway.
+
+If you already have live data in Supabase, you still need to migrate:
+
+1. database records
+2. user accounts
+3. uploaded files from Supabase storage
+
+Without that migration, Railway will start as a fresh system.
+
+## Files to check
+
+- backend entry: [server/index.js](./server/index.js)
+- database schema: [server/schema.sql](./server/schema.sql)
+- API helper: [src/lib/api.ts](./src/lib/api.ts)
+- auth hook: [src/hooks/useAuth.tsx](./src/hooks/useAuth.tsx)
+- env example: [.env.example](./.env.example)
+
+## Verification status
+
+Verified:
 
 - `npm run build`
-- backend modules load successfully with a valid `DATABASE_URL`
+- backend modules load with a valid `DATABASE_URL`
 
-`npm run lint` still fails on pre-existing repo issues in UI helper files such as:
+Not fully cleaned up:
 
-- `src/components/ui/command.tsx`
-- `src/components/ui/textarea.tsx`
-- `tailwind.config.ts`
+- `npm run lint` still reports older repo issues in some unrelated UI helper files such as `src/components/ui/command.tsx`, `src/components/ui/textarea.tsx`, and `tailwind.config.ts`
+
+## Official Railway docs
+
+Useful references:
+
+- https://docs.railway.com/
+- https://docs.railway.com/guides/django

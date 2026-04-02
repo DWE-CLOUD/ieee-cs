@@ -4,7 +4,7 @@ const rootDir = process.cwd();
 
 const parseList = (value) =>
   (value || '')
-    .split(',')
+    .split(/[,\n]/)
     .map((item) => item.trim().toLowerCase())
     .filter(Boolean);
 
@@ -15,6 +15,7 @@ export const config = {
   jwtSecret: process.env.JWT_SECRET || 'dev-only-secret-change-me',
   uploadsDir: process.env.UPLOADS_DIR || path.join(rootDir, 'data', 'uploads'),
   appUrl: process.env.PUBLIC_APP_URL || '',
+  railwayPublicDomain: process.env.RAILWAY_PUBLIC_DOMAIN || '',
   allowedOrigins: parseList(process.env.ALLOWED_ORIGINS),
   adminEmails: parseList(process.env.ADMIN_EMAILS),
   cookieName: process.env.SESSION_COOKIE_NAME || 'ppp_session',
