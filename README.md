@@ -82,8 +82,9 @@ PUBLIC_APP_URL=https://your-service.up.railway.app
 ALLOWED_ORIGINS=https://your-service.up.railway.app
 APP_NAME=IEEE Computer Society
 SMTP_HOST=smtp.gmail.com
-SMTP_PORT=465
-SMTP_SECURE=true
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_FAMILY=4
 SMTP_USER=your-email@gmail.com
 SMTP_PASS=your-gmail-app-password
 MAIL_FROM=your-email@gmail.com
@@ -97,6 +98,7 @@ Notes:
 - `PUBLIC_APP_URL`: use your Railway public URL first, then replace it later with your custom domain if needed
 - `ALLOWED_ORIGINS`: should match the frontend URL that will open the app in the browser
 - `SMTP_*` and `MAIL_FROM`: required for welcome emails, forgot-password emails, and magic login emails
+- for Gmail on Railway, use `SMTP_PORT=587` and `SMTP_SECURE=false` first; it is typically more reliable than implicit TLS on `465`
 
 Optional:
 
@@ -187,8 +189,9 @@ PUBLIC_APP_URL=http://localhost:3000
 ALLOWED_ORIGINS=http://localhost:8080
 APP_NAME=IEEE Computer Society
 SMTP_HOST=smtp.gmail.com
-SMTP_PORT=465
-SMTP_SECURE=true
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_FAMILY=4
 SMTP_USER=your-email@gmail.com
 SMTP_PASS=your-gmail-app-password
 MAIL_FROM=your-email@gmail.com
