@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { ChevronLeft, ChevronRight, Camera, Expand, X, Grid3X3, LayoutGrid, ArrowLeft, Loader2, ImageOff, Images } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { getOptimizedImageUrl } from "@/lib/images";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { format } from "date-fns";
@@ -302,7 +303,10 @@ const Gallery = () => {
                         "aspect-[16/10]"
                       )}>
                         <img
-                          src={image.image_url}
+                          src={getOptimizedImageUrl(image.image_url, {
+                            width: isCenter ? 1200 : 640,
+                            quality: isCenter ? 78 : 66,
+                          })}
                           alt={image.title}
                           loading={isCenter ? "eager" : "lazy"}
                           decoding="async"
@@ -413,7 +417,7 @@ const Gallery = () => {
                     onClick={() => openLightbox(index)}
                   >
                     <img
-                      src={image.image_url}
+                      src={getOptimizedImageUrl(image.image_url, { width: 720, quality: 64 })}
                       alt={image.title}
                       loading="lazy"
                       decoding="async"
@@ -457,7 +461,7 @@ const Gallery = () => {
                     <div className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-muted mb-4">
                       {album.cover_image_url ? (
                         <img
-                          src={album.cover_image_url}
+                          src={getOptimizedImageUrl(album.cover_image_url, { width: 900, quality: 68 })}
                           alt={album.title}
                           loading="lazy"
                           decoding="async"
@@ -532,7 +536,7 @@ const Gallery = () => {
             onClick={(e) => e.stopPropagation()}
           >
             <img
-              src={albumImages[lightboxIndex].image_url}
+              src={getOptimizedImageUrl(albumImages[lightboxIndex].image_url, { width: 1800, quality: 82 })}
               alt={albumImages[lightboxIndex].title}
               loading="eager"
               decoding="async"
@@ -566,7 +570,7 @@ const Gallery = () => {
                 )}
               >
                 <img
-                  src={image.image_url}
+                  src={getOptimizedImageUrl(image.image_url, { width: 160, height: 120, fit: 'cover', quality: 58 })}
                   alt={image.title}
                   loading="lazy"
                   decoding="async"

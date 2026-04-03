@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { ChevronLeft, ChevronRight, Camera, Expand, X, ArrowRight, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
+import { getOptimizedImageUrl } from "@/lib/images";
 import SmartLink from "@/components/SmartLink";
 import { useHomeContent } from "@/components/home/HomeContentProvider";
 
@@ -186,7 +187,10 @@ const GallerySection = () => {
                       "aspect-[4/3]"
                     )}>
                       <img
-                        src={image.image_url}
+                        src={getOptimizedImageUrl(image.image_url, {
+                          width: isCenter ? 1100 : 520,
+                          quality: isCenter ? 76 : 62,
+                        })}
                         alt={image.title}
                         loading={isCenter ? "eager" : "lazy"}
                         decoding="async"
@@ -325,7 +329,7 @@ const GallerySection = () => {
             onClick={(e) => e.stopPropagation()}
           >
             <img
-              src={galleryImages[lightboxIndex].image_url}
+              src={getOptimizedImageUrl(galleryImages[lightboxIndex].image_url, { width: 1700, quality: 82 })}
               alt={galleryImages[lightboxIndex].title}
               loading="eager"
               decoding="async"
@@ -359,7 +363,7 @@ const GallerySection = () => {
                 )}
               >
                 <img
-                  src={image.image_url}
+                  src={getOptimizedImageUrl(image.image_url, { width: 160, height: 107, fit: 'cover', quality: 56 })}
                   alt={image.title}
                   loading="lazy"
                   decoding="async"

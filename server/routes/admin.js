@@ -5,6 +5,7 @@ import {
   buildApplicationsForViewer,
   canManageTeam,
   ensurePositionAccess,
+  optimizeUploadedImage,
   parseArray,
   requireAdmin,
   requireAdminOrGallery,
@@ -717,9 +718,9 @@ router.post('/gallery/albums', requireAuth, requireAdminOrGallery, upload.single
   try {
     let coverUrl = req.body.cover_image_url || null;
     if (req.file) {
-      const ext = path.extname(req.file.originalname) || '.jpg';
-      const fileName = `${Date.now()}-${toSlug(req.body.title)}${ext}`;
-      coverUrl = await writeUpload('gallery', fileName, req.file.buffer);
+      const fileName = `${Date.now()}-${toSlug(req.body.title)}.webp`;
+      const optimizedBuffer = await optimizeUploadedImage(req.file.buffer, { width: 1600, quality: 78 });
+      coverUrl = await writeUpload('gallery', fileName, optimizedBuffer);
     }
 
     const { rows } = await query(
@@ -746,9 +747,9 @@ router.patch('/gallery/albums/:id', requireAuth, requireAdminOrGallery, upload.s
   try {
     let coverUrl = req.body.cover_image_url || null;
     if (req.file) {
-      const ext = path.extname(req.file.originalname) || '.jpg';
-      const fileName = `${Date.now()}-${toSlug(req.body.title)}${ext}`;
-      coverUrl = await writeUpload('gallery', fileName, req.file.buffer);
+      const fileName = `${Date.now()}-${toSlug(req.body.title)}.webp`;
+      const optimizedBuffer = await optimizeUploadedImage(req.file.buffer, { width: 1600, quality: 78 });
+      coverUrl = await writeUpload('gallery', fileName, optimizedBuffer);
     }
 
     const { rows } = await query(
@@ -796,10 +797,10 @@ router.post('/gallery/images', requireAuth, requireAdminOrGallery, upload.array(
   try {
     const inserted = [];
     for (const [index, file] of req.files.entries()) {
-      const ext = path.extname(file.originalname) || '.jpg';
       const baseTitle = req.body.title || file.originalname.replace(/\.[^.]+$/, '');
-      const fileName = `${Date.now()}-${index}-${toSlug(baseTitle)}${ext}`;
-      const imageUrl = await writeUpload('gallery', fileName, file.buffer);
+      const fileName = `${Date.now()}-${index}-${toSlug(baseTitle)}.webp`;
+      const optimizedBuffer = await optimizeUploadedImage(file.buffer, { width: 1920, quality: 80 });
+      const imageUrl = await writeUpload('gallery', fileName, optimizedBuffer);
       const title = req.files.length > 1 ? `${baseTitle} (${index + 1})` : baseTitle;
       const { rows } = await query(
         `
@@ -829,9 +830,9 @@ router.patch('/gallery/images/:id', requireAuth, requireAdminOrGallery, upload.s
   try {
     let imageUrl = req.body.image_url || null;
     if (req.file) {
-      const ext = path.extname(req.file.originalname) || '.jpg';
-      const fileName = `${Date.now()}-${toSlug(req.body.title)}${ext}`;
-      imageUrl = await writeUpload('gallery', fileName, req.file.buffer);
+      const fileName = `${Date.now()}-${toSlug(req.body.title)}.webp`;
+      const optimizedBuffer = await optimizeUploadedImage(req.file.buffer, { width: 1920, quality: 80 });
+      imageUrl = await writeUpload('gallery', fileName, optimizedBuffer);
     }
 
     const { rows } = await query(

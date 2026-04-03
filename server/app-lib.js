@@ -4,6 +4,7 @@ import crypto from 'node:crypto';
 import multer from 'multer';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import sharp from 'sharp';
 import { config, isProduction } from './config.js';
 import { query } from './db.js';
 
@@ -60,6 +61,7 @@ export const isAdminEmail = (email) => config.adminEmails.includes(normalizeEmai
 export const ensureDirectories = async () => {
   await fs.mkdir(path.join(publicUploadsDir, 'avatars'), { recursive: true });
   await fs.mkdir(path.join(publicUploadsDir, 'gallery'), { recursive: true });
+  await fs.mkdir(path.join(publicUploadsDir, '.cache'), { recursive: true });
   await fs.mkdir(path.join(privateUploadsDir, 'resumes'), { recursive: true });
 };
 
@@ -70,6 +72,25 @@ export const writeUpload = async (bucket, fileName, buffer, isPrivate = false) =
   const fullPath = path.join(fullDir, fileName);
   await fs.writeFile(fullPath, buffer);
   return isPrivate ? `${bucket}/${fileName}` : `/uploads/${bucket}/${fileName}`;
+};
+
+export const optimizeUploadedImage = async (buffer, options = {}) => {
+  const {
+    width = 1920,
+    height,
+    quality = 80,
+  } = options;
+
+  return sharp(buffer)
+    .rotate()
+    .resize({
+      width,
+      height,
+      fit: 'inside',
+      withoutEnlargement: true,
+    })
+    .webp({ quality })
+    .toBuffer();
 };
 
 export const resolvePrivatePath = (relativePath) => {
