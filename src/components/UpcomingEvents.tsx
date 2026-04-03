@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { ArrowRight, Calendar, MapPin, Clock, ExternalLink, Sparkles } from "lucide-react";
 import { api } from "@/lib/api";
-import { getOptimizedImageUrl } from "@/lib/images";
 import { format, isToday, isTomorrow, differenceInDays } from "date-fns";
+import LazyImage from "@/components/LazyImage";
 import SmartLink from "@/components/SmartLink";
 import { useHomeContent } from "@/components/home/HomeContentProvider";
 
@@ -156,11 +156,9 @@ const UpcomingEvents = () => {
                 {/* Image for featured events */}
                 {event.is_featured && (event as Event).image_url && (
                   <div className="aspect-video overflow-hidden">
-                    <img 
-                      src={getOptimizedImageUrl((event as Event).image_url!, { width: 1280, quality: 74 })} 
+                    <LazyImage 
+                      src={(event as Event).image_url!} 
                       alt={event.title}
-                      loading="lazy"
-                      decoding="async"
                       fetchPriority="low"
                       sizes="(min-width: 768px) 66vw, 100vw"
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"

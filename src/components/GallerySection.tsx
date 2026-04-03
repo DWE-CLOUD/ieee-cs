@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { ChevronLeft, ChevronRight, Camera, Expand, X, ArrowRight, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
-import { getOptimizedImageUrl } from "@/lib/images";
+import LazyImage from "@/components/LazyImage";
 import SmartLink from "@/components/SmartLink";
 import { useHomeContent } from "@/components/home/HomeContentProvider";
 
@@ -186,14 +186,10 @@ const GallerySection = () => {
                       "w-[280px] md:w-[400px] lg:w-[500px]",
                       "aspect-[4/3]"
                     )}>
-                      <img
-                        src={getOptimizedImageUrl(image.image_url, {
-                          width: isCenter ? 1100 : 520,
-                          quality: isCenter ? 76 : 62,
-                        })}
+                      <LazyImage
+                        src={image.image_url}
                         alt={image.title}
-                        loading={isCenter ? "eager" : "lazy"}
-                        decoding="async"
+                        eager={isCenter}
                         fetchPriority={isCenter ? "high" : "low"}
                         sizes={isCenter ? "(min-width: 1024px) 500px, (min-width: 768px) 400px, 280px" : "(min-width: 1024px) 320px, 220px"}
                         className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
@@ -328,11 +324,10 @@ const GallerySection = () => {
             className="relative max-w-[90vw] max-h-[85vh] animate-scale-in"
             onClick={(e) => e.stopPropagation()}
           >
-            <img
-              src={getOptimizedImageUrl(galleryImages[lightboxIndex].image_url, { width: 1700, quality: 82 })}
+            <LazyImage
+              src={galleryImages[lightboxIndex].image_url}
               alt={galleryImages[lightboxIndex].title}
-              loading="eager"
-              decoding="async"
+              eager
               fetchPriority="high"
               className="max-w-full max-h-[85vh] object-contain rounded-xl shadow-2xl"
             />
@@ -362,11 +357,9 @@ const GallerySection = () => {
                     : "opacity-50 hover:opacity-100"
                 )}
               >
-                <img
-                  src={getOptimizedImageUrl(image.image_url, { width: 160, height: 107, fit: 'cover', quality: 56 })}
+                <LazyImage
+                  src={image.image_url}
                   alt={image.title}
-                  loading="lazy"
-                  decoding="async"
                   fetchPriority="low"
                   className="w-full h-full object-cover"
                 />

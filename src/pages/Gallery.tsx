@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { ChevronLeft, ChevronRight, Camera, Expand, X, Grid3X3, LayoutGrid, ArrowLeft, Loader2, ImageOff, Images } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { getOptimizedImageUrl } from "@/lib/images";
+import LazyImage from "@/components/LazyImage";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { format } from "date-fns";
@@ -302,14 +302,10 @@ const Gallery = () => {
                         "w-[300px] md:w-[450px] lg:w-[600px]",
                         "aspect-[16/10]"
                       )}>
-                        <img
-                          src={getOptimizedImageUrl(image.image_url, {
-                            width: isCenter ? 1200 : 640,
-                            quality: isCenter ? 78 : 66,
-                          })}
+                        <LazyImage
+                          src={image.image_url}
                           alt={image.title}
-                          loading={isCenter ? "eager" : "lazy"}
-                          decoding="async"
+                          eager={isCenter}
                           fetchPriority={isCenter ? "high" : "low"}
                           sizes={isCenter ? "(min-width: 1024px) 600px, (min-width: 768px) 450px, 300px" : "(min-width: 1024px) 400px, 240px"}
                           className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105"
@@ -416,11 +412,9 @@ const Gallery = () => {
                     className="group relative aspect-square overflow-hidden rounded-xl cursor-pointer"
                     onClick={() => openLightbox(index)}
                   >
-                    <img
-                      src={getOptimizedImageUrl(image.image_url, { width: 720, quality: 64 })}
+                    <LazyImage
+                      src={image.image_url}
                       alt={image.title}
-                      loading="lazy"
-                      decoding="async"
                       fetchPriority="low"
                       sizes="(min-width: 1024px) 25vw, (min-width: 768px) 33vw, 50vw"
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
@@ -460,11 +454,9 @@ const Gallery = () => {
                   >
                     <div className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-muted mb-4">
                       {album.cover_image_url ? (
-                        <img
-                          src={getOptimizedImageUrl(album.cover_image_url, { width: 900, quality: 68 })}
+                        <LazyImage
+                          src={album.cover_image_url}
                           alt={album.title}
-                          loading="lazy"
-                          decoding="async"
                           fetchPriority="low"
                           sizes="(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw"
                           className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
@@ -535,11 +527,10 @@ const Gallery = () => {
             className="relative max-w-[90vw] max-h-[85vh]"
             onClick={(e) => e.stopPropagation()}
           >
-            <img
-              src={getOptimizedImageUrl(albumImages[lightboxIndex].image_url, { width: 1800, quality: 82 })}
+            <LazyImage
+              src={albumImages[lightboxIndex].image_url}
               alt={albumImages[lightboxIndex].title}
-              loading="eager"
-              decoding="async"
+              eager
               fetchPriority="high"
               className="max-w-full max-h-[85vh] object-contain rounded-xl shadow-2xl"
             />
@@ -569,11 +560,9 @@ const Gallery = () => {
                     : "opacity-50 hover:opacity-100"
                 )}
               >
-                <img
-                  src={getOptimizedImageUrl(image.image_url, { width: 160, height: 120, fit: 'cover', quality: 58 })}
+                <LazyImage
+                  src={image.image_url}
                   alt={image.title}
-                  loading="lazy"
-                  decoding="async"
                   fetchPriority="low"
                   className="w-full h-full object-cover"
                 />

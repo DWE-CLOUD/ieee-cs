@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { api } from "@/lib/api";
 import { useHomeContent } from "@/components/home/HomeContentProvider";
 import { getMemberProfilePath } from "@/lib/members";
+import LazyImage from "@/components/LazyImage";
 
 interface TeamMember {
   id: string;
@@ -331,9 +332,10 @@ const TeamSection = () => {
                                     isHovered ? 'scale-[1.03] -translate-y-1' : 'scale-100'
                                   }`}
                                 >
-                                  <img
+                                  <LazyImage
                                     src={teamHead.profiles.avatar_url}
                                     alt={teamHead.profiles.display_name || 'Team Head'}
+                                    rootMargin="200px"
                                     className={`w-full h-full object-cover transition-transform duration-700 ${
                                       isHovered ? 'scale-105' : 'scale-100'
                                     }`}
@@ -587,9 +589,10 @@ const TeamSection = () => {
                           <div className="flex items-center gap-3 mb-4 p-3 rounded-xl bg-gradient-to-r from-accent/10 to-transparent border border-accent/20">
                             <div className="relative">
                               {teamHead.profiles.avatar_url ? (
-                                <img 
+                                <LazyImage 
                                   src={teamHead.profiles.avatar_url} 
                                   alt={teamHead.profiles.display_name || 'Head'} 
+                                  rootMargin="200px"
                                   className="w-12 h-12 rounded-full object-cover ring-2 ring-accent shadow-lg"
                                 />
                               ) : (
@@ -711,9 +714,10 @@ const TeamSection = () => {
                               className="w-14 h-14 rounded-full overflow-hidden bg-muted flex-shrink-0 ring-2 ring-background flex items-center justify-center"
                             >
                               {member.profiles.avatar_url ? (
-                                <img 
+                                <LazyImage 
                                   src={member.profiles.avatar_url} 
                                   alt={member.profiles.display_name || 'Team member'}
+                                  rootMargin="200px"
                                   className="w-full h-full object-cover group-hover/member:scale-110 transition-transform duration-300"
                                 />
                               ) : (

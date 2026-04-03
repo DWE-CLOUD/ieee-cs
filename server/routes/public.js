@@ -1,8 +1,4 @@
-import fs from 'node:fs/promises';
-import crypto from 'node:crypto';
-import path from 'node:path';
 import express from 'express';
-import sharp from 'sharp';
 import { query, withTransaction } from '../db.js';
 import {
   buildAbsoluteUrl,
@@ -15,7 +11,6 @@ import {
   isAdminEmail,
   normalizeEmail,
   parseArray,
-  publicUploadsDir,
   requireAuth,
   resolvePrivatePath,
   sendError,
@@ -38,9 +33,6 @@ const router = express.Router();
 const PASSWORD_RESET_WINDOW_MS = 1000 * 60 * 60;
 const MAGIC_LOGIN_WINDOW_MS = 1000 * 60 * 20;
 const HEX_COLOR_PATTERN = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
-const MAX_OPTIMIZED_WIDTH = 2200;
-const MAX_OPTIMIZED_HEIGHT = 2200;
-const DEFAULT_OPTIMIZED_QUALITY = 72;
 
 const normalizeColor = (value) => {
   if (!value) {
@@ -57,32 +49,6 @@ const normalizeColor = (value) => {
   }
 
   return trimmed.toLowerCase();
-};
-
-const parsePositiveInt = (value, maxValue) => {
-  const parsed = Number.parseInt(String(value || ''), 10);
-  if (!Number.isFinite(parsed) || parsed <= 0) {
-    return null;
-  }
-
-  return Math.min(parsed, maxValue);
-};
-
-const resolvePublicUploadPath = (uploadUrl) => {
-  if (!String(uploadUrl || '').startsWith('/uploads/')) {
-    return null;
-  }
-
-  const relativePath = decodeURIComponent(String(uploadUrl).replace(/^\/uploads\//, ''));
-  const normalizedPath = path.normalize(relativePath);
-  const absolutePath = path.join(publicUploadsDir, normalizedPath);
-  const uploadsRoot = `${path.resolve(publicUploadsDir)}${path.sep}`;
-
-  if (!absolutePath.startsWith(uploadsRoot) && path.resolve(absolutePath) !== path.resolve(publicUploadsDir)) {
-    return null;
-  }
-
-  return absolutePath;
 };
 
 const persistAuthToken = async (userId, purpose, durationMs) => {
@@ -141,69 +107,6 @@ const buildMagicLoginUrl = (token) =>
 
 router.get('/health', (_req, res) => {
   res.json({ ok: true });
-});
-
-router.get('/image', async (req, res) => {
-  const src = typeof req.query.src === 'string' ? req.query.src : '';
-  const sourcePath = resolvePublicUploadPath(src);
-
-  if (!sourcePath) {
-    res.status(400).json({ error: 'A valid local upload src is required' });
-    return;
-  }
-
-  const width = parsePositiveInt(req.query.w, MAX_OPTIMIZED_WIDTH);
-  const height = parsePositiveInt(req.query.h, MAX_OPTIMIZED_HEIGHT);
-  const quality = parsePositiveInt(req.query.q, 90) || DEFAULT_OPTIMIZED_QUALITY;
-  const fit = req.query.fit === 'cover' ? 'cover' : 'inside';
-  const cacheDir = path.join(publicUploadsDir, '.cache');
-
-  try {
-    const sourceStats = await fs.stat(sourcePath);
-    const cacheKey = crypto
-      .createHash('sha1')
-      .update(
-        JSON.stringify({
-          src,
-          width,
-          height,
-          quality,
-          fit,
-          updatedAt: sourceStats.mtimeMs,
-        })
-      )
-      .digest('hex');
-    const cachePath = path.join(cacheDir, `${cacheKey}.webp`);
-
-    try {
-      await fs.access(cachePath);
-    } catch {
-      await fs.mkdir(cacheDir, { recursive: true });
-      const transformer = sharp(sourcePath).rotate();
-
-      if (width || height) {
-        transformer.resize({
-          width: width || undefined,
-          height: height || undefined,
-          fit,
-          withoutEnlargement: true,
-        });
-      }
-
-      await transformer.webp({ quality }).toFile(cachePath);
-    }
-
-    res.setHeader('Content-Type', 'image/webp');
-    res.setHeader('Cache-Control', 'public, max-age=2592000, immutable');
-    res.setHeader('Vary', 'Accept');
-    res.sendFile(cachePath);
-  } catch (error) {
-    console.error('Image optimization failed, falling back to original image', {
-      src,
-      message: error instanceof Error ? error.message : String(error),
-    });
-    res.sendFile(sourcePath);
-  }
 });
 
 router.get('/site-content/home', async (_req, res) => {
