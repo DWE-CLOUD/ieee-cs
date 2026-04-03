@@ -165,10 +165,10 @@ const Profile = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background overflow-x-hidden">
       {/* Header */}
-      <header className="sticky top-0 z-50 glass-strong px-6 py-4">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
+      <header className="sticky top-0 z-50 glass-strong px-4 py-3 md:px-6 md:py-4">
+        <div className="max-w-6xl mx-auto flex items-center justify-between gap-3">
           <Link 
             to="/" 
             className="flex items-center gap-3 group transition-transform duration-300 hover:scale-105"
@@ -179,18 +179,18 @@ const Profile = () => {
               className="h-8 w-auto object-contain"
             />
           </Link>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 md:gap-4">
             {isAdmin && (
               <Link
                 to="/admin"
-                className="text-sm text-accent hover:text-accent/80 transition-colors"
+                className="hidden sm:inline text-sm text-accent hover:text-accent/80 transition-colors"
               >
                 Admin Dashboard
               </Link>
             )}
             <Link
               to="/"
-              className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-all duration-300 group"
+              className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground hover:text-foreground transition-all duration-300 group"
             >
               <ArrowLeft className="w-4 h-4 transition-transform duration-300 group-hover:-translate-x-1" />
               Back to Home
@@ -200,7 +200,7 @@ const Profile = () => {
       </header>
 
       {/* Main Content */}
-      <div className="px-6 py-12">
+      <div className="px-4 py-6 md:px-6 md:py-12">
         <div 
           className="max-w-2xl mx-auto transition-all duration-700"
           style={{ 
@@ -209,17 +209,17 @@ const Profile = () => {
           }}
         >
           {/* Header */}
-          <div className="mb-8">
-            <h1 className="font-serif text-4xl text-foreground mb-2">Your Profile</h1>
+          <div className="mb-6 md:mb-8">
+            <h1 className="font-serif text-3xl md:text-4xl text-foreground mb-2">Your Profile</h1>
             <p className="text-muted-foreground">
               Manage your account information and preferences
             </p>
           </div>
 
           {/* Profile Card */}
-          <div className="bg-card rounded-3xl border border-border/50 p-8 shadow-elegant mb-6">
+          <div className="bg-card rounded-2xl md:rounded-3xl border border-border/50 p-5 md:p-8 shadow-elegant mb-6">
             {/* Avatar & Email */}
-            <div className="flex items-center gap-4 mb-8 pb-8 border-b border-border/50">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-6 pb-6 md:mb-8 md:pb-8 border-b border-border/50">
               {/* Avatar with upload */}
               <div className="relative group">
                 <div className="w-20 h-20 rounded-full bg-accent/10 flex items-center justify-center overflow-hidden">
@@ -257,7 +257,7 @@ const Profile = () => {
               </div>
 
               <div className="flex-1">
-                <h2 className="font-medium text-foreground text-lg">
+                <h2 className="font-medium text-foreground text-base md:text-lg">
                   {profile?.display_name || 'User'}
                 </h2>
                 {profile?.headline && (
@@ -276,7 +276,7 @@ const Profile = () => {
                 {isMember && user && (
                   <Link
                     to={publicProfilePath}
-                    className="mt-2 inline-flex items-center gap-1 text-xs text-accent hover:text-accent/80 transition-colors"
+                    className="mt-2 inline-flex items-center gap-1 text-xs text-accent hover:text-accent/80 transition-colors break-all"
                   >
                     <ExternalLink className="w-3 h-3" />
                     Preview public member page
@@ -295,7 +295,7 @@ const Profile = () => {
             </div>
 
             {/* Form */}
-            <div className="space-y-6">
+            <div className="space-y-5 md:space-y-6">
               {/* Display Name */}
               <div>
                 <label className="flex items-center gap-2 text-sm font-medium text-foreground mb-2">
@@ -311,7 +311,7 @@ const Profile = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                 <div>
                   <label className="flex items-center gap-2 text-sm font-medium text-foreground mb-2">
                     <Sparkles className="w-4 h-4 text-muted-foreground" />
@@ -344,7 +344,7 @@ const Profile = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
                 <div>
                   <label className="flex items-center gap-2 text-sm font-medium text-foreground mb-2">
                     <Phone className="w-4 h-4 text-muted-foreground" />
@@ -423,7 +423,7 @@ const Profile = () => {
                   />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
                   <div>
                     <label className="block text-sm font-medium text-foreground mb-2">Primary Color</label>
                     <input
@@ -460,7 +460,7 @@ const Profile = () => {
                   <h3 className="text-sm font-medium text-foreground">Page Copy & Sections</h3>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                   <div>
                     <label className="block text-sm font-medium text-foreground mb-2">Hero Label</label>
                     <input
@@ -534,7 +534,7 @@ const Profile = () => {
                   />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                   <div>
                     <label className="flex items-center gap-2 text-sm font-medium text-foreground mb-2">
                       <LinkIcon className="w-4 h-4 text-muted-foreground" />
@@ -659,7 +659,7 @@ const Profile = () => {
             <button
               onClick={handleSave}
               disabled={isSaving}
-              className="w-full mt-8 py-3 rounded-xl bg-foreground text-primary-foreground font-medium transition-all duration-300 hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2"
+              className="w-full mt-6 md:mt-8 py-3 rounded-xl bg-foreground text-primary-foreground font-medium transition-all duration-300 hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {isSaving ? (
                 <>
@@ -681,7 +681,7 @@ const Profile = () => {
           )}
 
           {/* My Applications Section */}
-          <div className="bg-card rounded-3xl border border-border/50 p-8 shadow-elegant mb-6">
+          <div className="bg-card rounded-2xl md:rounded-3xl border border-border/50 p-5 md:p-8 shadow-elegant mb-6">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center">
                 <ClipboardList className="w-5 h-5 text-accent" />

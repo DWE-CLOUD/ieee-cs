@@ -240,7 +240,7 @@ const TeamMembersManager = ({ teams, users, onUpdate }: TeamMembersManagerProps)
 
   return (
     <div>
-      <div className="p-6 border-b border-border/50 bg-muted/20">
+      <div className="p-4 md:p-6 border-b border-border/50 bg-muted/20">
         <div className="flex items-start gap-3 mb-4">
           <div className="w-10 h-10 rounded-2xl bg-accent/15 text-accent flex items-center justify-center">
             <UserPlus className="w-5 h-5" />
@@ -314,7 +314,7 @@ const TeamMembersManager = ({ teams, users, onUpdate }: TeamMembersManagerProps)
             <button
               onClick={handleAssignMember}
               disabled={isAssigning || users.length === 0 || teams.length === 0}
-              className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-accent text-accent-foreground text-sm font-medium transition-colors hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex w-full items-center justify-center gap-2 px-4 py-2 rounded-lg bg-accent text-accent-foreground text-sm font-medium transition-colors hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isAssigning ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
               {selectedExistingMember ? 'Update Member' : 'Add Member'}
@@ -330,14 +330,14 @@ const TeamMembersManager = ({ teams, users, onUpdate }: TeamMembersManagerProps)
       </div>
 
       {/* Filter and Download controls */}
-      <div className="p-6 border-b border-border/50">
+      <div className="p-4 md:p-6 border-b border-border/50">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 w-full sm:w-auto">
             <label className="text-sm font-medium text-foreground">Filter by Team:</label>
             <select
               value={selectedTeam}
               onChange={(e) => setSelectedTeam(e.target.value)}
-              className="px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-accent/50"
+              className="w-full sm:w-auto px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-accent/50"
             >
               <option value="all">All Teams</option>
               {teams.map((team) => (
@@ -346,11 +346,11 @@ const TeamMembersManager = ({ teams, users, onUpdate }: TeamMembersManagerProps)
             </select>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
             <button
               onClick={downloadNamesOnly}
               disabled={filteredMembers.length === 0}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-muted hover:bg-muted/80 text-foreground text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-muted hover:bg-muted/80 text-foreground text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Download className="w-4 h-4" />
               Names Only
@@ -358,7 +358,7 @@ const TeamMembersManager = ({ teams, users, onUpdate }: TeamMembersManagerProps)
             <button
               onClick={downloadFullData}
               disabled={filteredMembers.length === 0}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-accent text-accent-foreground text-sm font-medium transition-colors hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-accent text-accent-foreground text-sm font-medium transition-colors hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <FileSpreadsheet className="w-4 h-4" />
               Full Data + Forms
@@ -370,8 +370,8 @@ const TeamMembersManager = ({ teams, users, onUpdate }: TeamMembersManagerProps)
       {/* Members list */}
       <div className="divide-y divide-border/50">
         {filteredMembers.map((member) => (
-          <div key={member.id} className="flex items-center justify-between p-6 hover:bg-muted/30 transition-colors">
-            <div className="flex items-center gap-4">
+          <div key={member.id} className="flex flex-col gap-4 p-4 md:p-6 hover:bg-muted/30 transition-colors sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start sm:items-center gap-4 min-w-0">
               <div 
                 className="w-10 h-10 rounded-full flex items-center justify-center relative"
                 style={{ backgroundColor: `${getTeamColor(member.team_id)}20` }}
@@ -384,8 +384,8 @@ const TeamMembersManager = ({ teams, users, onUpdate }: TeamMembersManagerProps)
                 )}
               </div>
               <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="font-medium text-foreground">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="font-medium text-foreground break-words">
                     {member.profiles?.display_name || 'Unknown User'}
                   </h3>
                   {member.is_head && (
@@ -403,15 +403,15 @@ const TeamMembersManager = ({ teams, users, onUpdate }: TeamMembersManagerProps)
                     {getTeamName(member.team_id)}
                   </span>
                 </div>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-muted-foreground break-all">
                   {member.position_title} • {member.profiles?.email}
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
               <button
                 onClick={() => handleToggleHead(member)}
-                className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
+                className={`flex items-center justify-center gap-2 px-3 py-2 rounded-lg transition-colors ${
                   member.is_head 
                     ? 'bg-accent/15 text-accent hover:bg-accent/25' 
                     : 'text-muted-foreground hover:bg-muted hover:text-foreground'
@@ -423,7 +423,7 @@ const TeamMembersManager = ({ teams, users, onUpdate }: TeamMembersManagerProps)
               </button>
               <button
                 onClick={() => handleRemoveMember(member.id, member.profiles?.display_name || 'this member')}
-                className="flex items-center gap-2 px-3 py-2 rounded-lg text-destructive hover:bg-destructive/10 transition-colors"
+                className="flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-destructive hover:bg-destructive/10 transition-colors"
               >
                 <UserX className="w-4 h-4" />
                 <span className="text-sm font-medium">Remove</span>

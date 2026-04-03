@@ -236,38 +236,38 @@ const Admin = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background overflow-x-hidden">
       {/* Header */}
-      <header className="sticky top-0 z-50 glass-strong px-6 py-4">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
+      <header className="sticky top-0 z-50 glass-strong px-4 py-3 md:px-6 md:py-4">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
           <Link to="/" className="flex items-center gap-3 group transition-transform duration-300 hover:scale-105">
             <img src={ieeeLogo} alt="IEEE Computer Society" className="h-8 w-auto object-contain" />
           </Link>
-          <Link to="/" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-all duration-300 group">
+          <Link to="/" className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground hover:text-foreground transition-all duration-300 group">
             <ArrowLeft className="w-4 h-4 transition-transform duration-300 group-hover:-translate-x-1" />
             Back to Home
           </Link>
         </div>
       </header>
 
-      <div className="px-6 py-8">
+      <div className="px-4 py-6 md:px-6 md:py-8">
         <div 
           className="max-w-7xl mx-auto transition-all duration-700"
           style={{ opacity: isLoaded ? 1 : 0, transform: isLoaded ? 'translateY(0)' : 'translateY(20px)' }}
         >
           {/* Header */}
-          <div className="mb-8">
-            <h1 className="font-serif text-4xl text-foreground mb-2">Admin Dashboard</h1>
+          <div className="mb-6 md:mb-8">
+            <h1 className="font-serif text-3xl md:text-4xl text-foreground mb-2">Admin Dashboard</h1>
             <p className="text-muted-foreground">Manage positions, teams, applications, and users</p>
           </div>
 
           {/* Tabs */}
-          <div className="flex flex-wrap gap-2 mb-8">
+          <div className="flex gap-2 mb-6 md:mb-8 overflow-x-auto pb-2 scrollbar-hide">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium transition-all duration-300 ${
+                className={`shrink-0 flex items-center gap-2 px-3 md:px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 ${
                   activeTab === tab.id
                     ? 'bg-foreground text-primary-foreground shadow-elegant'
                     : 'bg-card text-muted-foreground hover:text-foreground border border-border/50'
@@ -287,7 +287,7 @@ const Admin = () => {
           </div>
 
           {/* Content */}
-          <div className="bg-card rounded-3xl border border-border/50 shadow-elegant overflow-hidden">
+          <div className="bg-card rounded-2xl md:rounded-3xl border border-border/50 shadow-elegant overflow-hidden">
             {isDataLoading ? (
               <div className="flex items-center justify-center py-20">
                 <Loader2 className="w-8 h-8 animate-spin text-accent" />

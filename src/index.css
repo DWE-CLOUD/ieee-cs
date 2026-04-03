@@ -80,9 +80,20 @@
     @apply border-border;
   }
 
+  html,
+  body,
+  #root {
+    min-height: 100%;
+  }
+
   body {
     @apply bg-background text-foreground font-sans antialiased;
     font-family: var(--font-sans);
+    min-height: 100dvh;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -192,6 +203,11 @@
 html {
   scroll-behavior: smooth;
   -webkit-tap-highlight-color: transparent;
+  overflow-x: hidden;
+}
+
+#root {
+  min-height: 100dvh;
 }
 
 /* GPU acceleration for animations */
@@ -239,8 +255,15 @@ html {
 
 /* Touch improvements */
 @supports (-webkit-touch-callout: none) {
+  html,
+  body,
+  #root {
+    min-height: -webkit-fill-available;
+  }
+
   body {
     -webkit-touch-callout: none;
+    -webkit-overflow-scrolling: touch;
   }
 }
 
@@ -251,4 +274,12 @@ html {
 
 .safe-top {
   padding-top: env(safe-area-inset-top);
+}
+
+@media (max-width: 640px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
 }

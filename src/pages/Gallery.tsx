@@ -128,8 +128,14 @@ const Gallery = () => {
 
   const closeLightbox = () => {
     setLightboxOpen(false);
-    document.body.style.overflow = "";
   };
+
+  useEffect(() => {
+    document.body.style.overflow = lightboxOpen ? "hidden" : "";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [lightboxOpen]);
 
   // Auto-play for carousel
   useEffect(() => {
@@ -170,7 +176,7 @@ const Gallery = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background overflow-x-hidden">
       <Header />
       
       {/* Hero Section */}
@@ -206,7 +212,7 @@ const Gallery = () => {
                   {selectedAlbum ? "Album" : "Event Albums"}
                 </span>
               </div>
-              <h1 className="font-serif text-5xl md:text-7xl lg:text-8xl text-foreground leading-none">
+              <h1 className="font-serif text-4xl sm:text-5xl md:text-7xl lg:text-8xl text-foreground leading-none">
                 {selectedAlbum ? selectedAlbum.title : "Gallery"}
               </h1>
               <p className="text-lg text-muted-foreground max-w-xl leading-relaxed">

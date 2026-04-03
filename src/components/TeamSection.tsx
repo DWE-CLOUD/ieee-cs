@@ -137,6 +137,12 @@ const TeamSection = () => {
     fetchTeamsWithMembers();
   }, []);
 
+  useEffect(() => {
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, []);
+
   const fetchTeamsWithMembers = async () => {
     setIsLoading(true);
 
@@ -216,7 +222,7 @@ const TeamSection = () => {
 
   if (isLoading) {
     return (
-      <section id="team" className="bg-background py-24 px-8">
+      <section id="team" className="bg-background py-24 px-4 md:px-8">
         <div className="max-w-7xl mx-auto flex items-center justify-center py-20">
           <Loader2 className="w-8 h-8 animate-spin text-accent" />
         </div>
@@ -226,7 +232,7 @@ const TeamSection = () => {
 
   if (teams.length === 0) {
     return (
-      <section id="team" className="bg-background py-24 px-8">
+      <section id="team" className="bg-background py-24 px-4 md:px-8">
         <div className="max-w-7xl mx-auto text-center py-20">
           <Users className="w-16 h-16 mx-auto mb-4 text-muted-foreground/50" />
           <h2 className="font-serif text-3xl text-foreground mb-2">No Teams Yet</h2>

@@ -48,15 +48,15 @@ const LandingContentManager = () => {
   }
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-5 md:space-y-6 p-4 md:p-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h2 className="font-serif text-2xl text-foreground">Landing Page Editor</h2>
+          <h2 className="font-serif text-xl md:text-2xl text-foreground">Landing Page Editor</h2>
           <p className="text-sm text-muted-foreground mt-1">
             Edit homepage copy, CTA links, footer links, and section text from here.
           </p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
           <button
             onClick={resetToDefaults}
             className="px-4 py-2 rounded-xl border border-border text-foreground font-medium hover:bg-muted transition-colors"
@@ -731,12 +731,12 @@ const DetailsCard = ({
   description: string;
   children: ReactNode;
 }) => (
-  <details open className="rounded-3xl border border-border/50 bg-background overflow-hidden">
-    <summary className="cursor-pointer list-none px-6 py-5 bg-muted/20 border-b border-border/50">
-      <h3 className="font-serif text-xl text-foreground">{title}</h3>
+  <details open className="rounded-2xl md:rounded-3xl border border-border/50 bg-background overflow-hidden">
+    <summary className="cursor-pointer list-none px-4 py-4 md:px-6 md:py-5 bg-muted/20 border-b border-border/50">
+      <h3 className="font-serif text-lg md:text-xl text-foreground">{title}</h3>
       <p className="text-sm text-muted-foreground mt-1">{description}</p>
     </summary>
-    <div className="space-y-4 p-6">{children}</div>
+    <div className="space-y-4 p-4 md:p-6">{children}</div>
   </details>
 );
 

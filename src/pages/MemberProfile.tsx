@@ -105,23 +105,23 @@ const MemberProfile = () => {
 
   if (!profile || error) {
     return (
-      <div className="min-h-screen bg-background">
-        <header className="sticky top-0 z-50 glass-strong px-6 py-4">
-          <div className="max-w-6xl mx-auto flex items-center justify-between">
+      <div className="min-h-screen bg-background overflow-x-hidden">
+        <header className="sticky top-0 z-50 glass-strong px-4 py-3 md:px-6 md:py-4">
+          <div className="max-w-6xl mx-auto flex items-center justify-between gap-3">
             <Link to="/" className="flex items-center gap-3 group transition-transform duration-300 hover:scale-105">
               <img src={ieeeLogo} alt="IEEE Computer Society" className="h-8 w-auto object-contain" />
             </Link>
             <Link
               to="/"
-              className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-all duration-300 group"
+              className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground hover:text-foreground transition-all duration-300 group"
             >
               <ArrowLeft className="w-4 h-4 transition-transform duration-300 group-hover:-translate-x-1" />
               Back to Home
             </Link>
           </div>
         </header>
-        <div className="max-w-4xl mx-auto px-6 py-24 text-center">
-          <h1 className="font-serif text-4xl text-foreground mb-3">Member Profile Unavailable</h1>
+        <div className="max-w-4xl mx-auto px-4 py-16 md:px-6 md:py-24 text-center">
+          <h1 className="font-serif text-3xl md:text-4xl text-foreground mb-3">Member Profile Unavailable</h1>
           <p className="text-muted-foreground">{error || 'This member page could not be found.'}</p>
         </div>
       </div>
@@ -137,19 +137,19 @@ const MemberProfile = () => {
 
   return (
     <div
-      className="min-h-screen"
+      className="min-h-screen overflow-x-hidden"
       style={{
         background: `linear-gradient(180deg, ${theme.surface} 0%, #ffffff 45%, #f8fafc 100%)`,
       }}
     >
-      <header className="sticky top-0 z-50 glass-strong px-6 py-4">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
+      <header className="sticky top-0 z-50 glass-strong px-4 py-3 md:px-6 md:py-4">
+        <div className="max-w-6xl mx-auto flex items-center justify-between gap-3">
           <Link to="/" className="flex items-center gap-3 group transition-transform duration-300 hover:scale-105">
             <img src={ieeeLogo} alt="IEEE Computer Society" className="h-8 w-auto object-contain" />
           </Link>
           <Link
             to="/"
-            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-all duration-300 group"
+            className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground hover:text-foreground transition-all duration-300 group"
           >
             <ArrowLeft className="w-4 h-4 transition-transform duration-300 group-hover:-translate-x-1" />
             Back to Home
@@ -183,10 +183,10 @@ const MemberProfile = () => {
         ) : null}
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.16),transparent_30%)]" />
 
-        <div className="max-w-6xl mx-auto px-6 py-16 md:py-24 relative z-10">
-          <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-8 items-end">
+        <div className="max-w-6xl mx-auto px-4 py-10 md:px-6 md:py-16 lg:py-24 relative z-10">
+          <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-6 md:gap-8 items-end">
             <div className="relative">
-              <div className="aspect-[4/5] rounded-[36px] overflow-hidden border border-white/20 bg-white/10 shadow-2xl backdrop-blur-sm">
+              <div className="aspect-[4/5] rounded-[28px] md:rounded-[36px] overflow-hidden border border-white/20 bg-white/10 shadow-2xl backdrop-blur-sm">
                 {profile.avatar_url ? (
                   <img src={profile.avatar_url} alt={profile.display_name || 'Member avatar'} className="w-full h-full object-cover" />
                 ) : (
@@ -195,7 +195,7 @@ const MemberProfile = () => {
                   </div>
                 )}
               </div>
-              <div className="absolute inset-x-6 -bottom-5 rounded-3xl border border-white/15 bg-white/10 backdrop-blur-md px-4 py-3 text-white shadow-xl">
+              <div className="absolute inset-x-4 md:inset-x-6 -bottom-5 rounded-[24px] md:rounded-3xl border border-white/15 bg-white/10 backdrop-blur-md px-4 py-3 text-white shadow-xl">
                 <p className="text-[11px] uppercase tracking-[0.22em] text-white/70">Profile URL</p>
                 <p className="truncate text-sm font-medium">
                   /members/{profile.public_slug || profile.user_id}
@@ -209,12 +209,12 @@ const MemberProfile = () => {
                 <span className="text-xs uppercase tracking-[0.22em]">{introLabel}</span>
               </div>
 
-              <h1 className="font-serif text-5xl md:text-7xl leading-[0.92] tracking-tight">
+              <h1 className="font-serif text-4xl sm:text-5xl md:text-6xl lg:text-7xl leading-[0.92] tracking-tight">
                 {profile.display_name || 'Team Member'}
               </h1>
 
               {profile.headline ? (
-                <p className="text-lg md:text-2xl text-white/82 mt-4 max-w-3xl">{profile.headline}</p>
+                <p className="text-base sm:text-lg md:text-2xl text-white/82 mt-4 max-w-3xl">{profile.headline}</p>
               ) : null}
 
               <div className="flex flex-wrap gap-3 mt-6">
@@ -262,11 +262,11 @@ const MemberProfile = () => {
         </div>
       </section>
 
-      <section className="px-6 py-16 md:py-20">
-        <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] gap-8">
+      <section className="px-4 py-10 md:px-6 md:py-16 lg:py-20">
+        <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] gap-6 md:gap-8">
           <div className="space-y-8">
             <div
-              className="rounded-[32px] border p-8 shadow-[0_25px_80px_-45px_rgba(15,23,42,0.35)]"
+              className="rounded-[24px] md:rounded-[32px] border p-5 md:p-8 shadow-[0_25px_80px_-45px_rgba(15,23,42,0.35)]"
               style={{
                 backgroundColor: '#ffffff',
                 borderColor: `${theme.primary}22`,
@@ -279,23 +279,23 @@ const MemberProfile = () => {
                 >
                   <Sparkles className="w-5 h-5" />
                 </div>
-                <h2 className="font-serif text-3xl text-foreground">{aboutTitle}</h2>
+                <h2 className="font-serif text-2xl md:text-3xl text-foreground">{aboutTitle}</h2>
               </div>
-              <p className="text-muted-foreground leading-8 text-base whitespace-pre-wrap">
+              <p className="text-muted-foreground leading-7 md:leading-8 text-sm md:text-base whitespace-pre-wrap">
                 {profile.bio || 'This member has not added a public bio yet.'}
               </p>
             </div>
 
             {profile.focus_body ? (
               <div
-                className="rounded-[32px] border p-8 shadow-[0_25px_80px_-45px_rgba(15,23,42,0.35)]"
+                className="rounded-[24px] md:rounded-[32px] border p-5 md:p-8 shadow-[0_25px_80px_-45px_rgba(15,23,42,0.35)]"
                 style={{
                   background: `linear-gradient(135deg, ${theme.secondary} 0%, ${theme.primary} 100%)`,
                   borderColor: `${theme.primary}35`,
                 }}
               >
                 <p className="text-xs uppercase tracking-[0.22em] text-white/60 mb-3">{focusTitle}</p>
-                <p className="text-white text-lg md:text-xl leading-8 whitespace-pre-wrap">
+                <p className="text-white text-base md:text-xl leading-7 md:leading-8 whitespace-pre-wrap">
                   {profile.focus_body}
                 </p>
               </div>
@@ -303,7 +303,7 @@ const MemberProfile = () => {
 
             {profile.favorite_quote ? (
               <div
-                className="rounded-[32px] border p-8"
+                className="rounded-[24px] md:rounded-[32px] border p-5 md:p-8"
                 style={{
                   backgroundColor: `${theme.primary}10`,
                   borderColor: `${theme.primary}22`,
@@ -311,17 +311,17 @@ const MemberProfile = () => {
               >
                 <div className="flex items-center gap-3 mb-4">
                   <Quote className="w-6 h-6" style={{ color: theme.primary }} />
-                  <h2 className="font-serif text-2xl text-foreground">Signature Line</h2>
+                  <h2 className="font-serif text-xl md:text-2xl text-foreground">Signature Line</h2>
                 </div>
-                <p className="font-serif text-2xl md:text-3xl leading-relaxed text-foreground/90">
+                <p className="font-serif text-xl md:text-3xl leading-relaxed text-foreground/90">
                   “{profile.favorite_quote}”
                 </p>
               </div>
             ) : null}
 
             {profile.achievements.length > 0 ? (
-              <div className="rounded-[32px] border border-border/50 bg-card p-8 shadow-soft">
-                <h2 className="font-serif text-3xl text-foreground mb-6">{highlightsTitle}</h2>
+              <div className="rounded-[24px] md:rounded-[32px] border border-border/50 bg-card p-5 md:p-8 shadow-soft">
+                <h2 className="font-serif text-2xl md:text-3xl text-foreground mb-5 md:mb-6">{highlightsTitle}</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {profile.achievements.map((achievement, index) => (
                     <div
@@ -348,8 +348,8 @@ const MemberProfile = () => {
 
           <div className="space-y-8">
             {profile.specialties.length > 0 ? (
-              <div className="rounded-[32px] border border-border/50 bg-card p-8 shadow-soft">
-                <h2 className="font-serif text-3xl text-foreground mb-6">{specialtiesTitle}</h2>
+              <div className="rounded-[24px] md:rounded-[32px] border border-border/50 bg-card p-5 md:p-8 shadow-soft">
+                <h2 className="font-serif text-2xl md:text-3xl text-foreground mb-5 md:mb-6">{specialtiesTitle}</h2>
                 <div className="flex flex-wrap gap-3">
                   {profile.specialties.map((specialty, index) => (
                     <span
@@ -368,8 +368,8 @@ const MemberProfile = () => {
               </div>
             ) : null}
 
-            <div className="rounded-[32px] border border-border/50 bg-card p-8 shadow-soft">
-              <h2 className="font-serif text-3xl text-foreground mb-6">Domains & Roles</h2>
+            <div className="rounded-[24px] md:rounded-[32px] border border-border/50 bg-card p-5 md:p-8 shadow-soft">
+              <h2 className="font-serif text-2xl md:text-3xl text-foreground mb-5 md:mb-6">Domains & Roles</h2>
               <div className="space-y-4">
                 {profile.memberships.map((membership) => (
                   <div
@@ -410,8 +410,8 @@ const MemberProfile = () => {
               </div>
             </div>
 
-            <div className="rounded-[32px] border border-border/50 bg-card p-8 shadow-soft">
-              <h2 className="font-serif text-3xl text-foreground mb-6">{connectTitle}</h2>
+            <div className="rounded-[24px] md:rounded-[32px] border border-border/50 bg-card p-5 md:p-8 shadow-soft">
+              <h2 className="font-serif text-2xl md:text-3xl text-foreground mb-5 md:mb-6">{connectTitle}</h2>
               <div className="space-y-3">
                 {profile.website_url ? (
                   <a
