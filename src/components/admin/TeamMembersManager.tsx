@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { Users, Loader2, UserX, Download, FileSpreadsheet, Crown } from 'lucide-react';
+import { Users, Loader2, UserX, Download, FileSpreadsheet, Crown, UserPlus } from 'lucide-react';
 import { api } from '@/lib/api';
 
 interface ApplicationResponse {
@@ -33,19 +33,45 @@ interface Team {
   color: string;
 }
 
+interface AdminUser {
+  user_id: string;
+  display_name: string | null;
+  email: string | null;
+}
+
 interface TeamMembersManagerProps {
   teams: Team[];
+  users: AdminUser[];
   onUpdate: () => void;
 }
 
-const TeamMembersManager = ({ teams, onUpdate }: TeamMembersManagerProps) => {
+const TeamMembersManager = ({ teams, users, onUpdate }: TeamMembersManagerProps) => {
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedTeam, setSelectedTeam] = useState<string>('all');
+  const [isAssigning, setIsAssigning] = useState(false);
+  const [assignment, setAssignment] = useState({
+    user_id: '',
+    team_id: '',
+    position_title: '',
+    is_head: false,
+  });
 
   useEffect(() => {
     fetchMembers();
   }, []);
+
+  useEffect(() => {
+    if (!assignment.team_id && teams.length > 0) {
+      setAssignment((current) => ({ ...current, team_id: teams[0].id }));
+    }
+  }, [assignment.team_id, teams]);
+
+  useEffect(() => {
+    if (!assignment.user_id && users.length > 0) {
+      setAssignment((current) => ({ ...current, user_id: users[0].user_id }));
+    }
+  }, [assignment.user_id, users]);
 
   const fetchMembers = async () => {
     setIsLoading(true);
@@ -57,6 +83,42 @@ const TeamMembersManager = ({ teams, onUpdate }: TeamMembersManagerProps) => {
       toast.error(error instanceof Error ? error.message : 'Failed to fetch members');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const selectedExistingMember =
+    members.find(
+      (member) => member.user_id === assignment.user_id && member.team_id === assignment.team_id
+    ) || null;
+
+  const handleAssignMember = async () => {
+    if (!assignment.user_id || !assignment.team_id || !assignment.position_title.trim()) {
+      toast.error('Select a user, team, and position title');
+      return;
+    }
+
+    setIsAssigning(true);
+
+    try {
+      await api.post('/api/admin/team-members', {
+        user_id: assignment.user_id,
+        team_id: assignment.team_id,
+        position_title: assignment.position_title.trim(),
+        is_head: assignment.is_head,
+      });
+      toast.success(selectedExistingMember ? 'Team member updated' : 'Team member added');
+      await fetchMembers();
+      onUpdate();
+      setAssignment((current) => ({
+        ...current,
+        user_id: '',
+        position_title: '',
+        is_head: false,
+      }));
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to save team member');
+    } finally {
+      setIsAssigning(false);
     }
   };
 
@@ -178,6 +240,95 @@ const TeamMembersManager = ({ teams, onUpdate }: TeamMembersManagerProps) => {
 
   return (
     <div>
+      <div className="p-6 border-b border-border/50 bg-muted/20">
+        <div className="flex items-start gap-3 mb-4">
+          <div className="w-10 h-10 rounded-2xl bg-accent/15 text-accent flex items-center justify-center">
+            <UserPlus className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="font-medium text-foreground">Add or Update Team Member</h3>
+            <p className="text-sm text-muted-foreground">
+              Assign any registered user to a team directly and optionally mark them as the current head.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1.5">User</label>
+            <select
+              value={assignment.user_id}
+              onChange={(e) => setAssignment((current) => ({ ...current, user_id: e.target.value }))}
+              className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-accent/50"
+            >
+              <option value="">Select user</option>
+              {users.map((user) => (
+                <option key={user.user_id} value={user.user_id}>
+                  {user.display_name || 'Unnamed user'}{user.email ? ` (${user.email})` : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1.5">Team</label>
+            <select
+              value={assignment.team_id}
+              onChange={(e) => setAssignment((current) => ({ ...current, team_id: e.target.value }))}
+              className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-accent/50"
+            >
+              <option value="">Select team</option>
+              {teams.map((team) => (
+                <option key={team.id} value={team.id}>
+                  {team.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1.5">Position Title</label>
+            <input
+              type="text"
+              value={assignment.position_title}
+              onChange={(e) =>
+                setAssignment((current) => ({ ...current, position_title: e.target.value }))
+              }
+              className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-accent/50"
+              placeholder="Domain Head, Designer, Developer..."
+            />
+          </div>
+
+          <div className="flex flex-col justify-end gap-3">
+            <label className="flex items-center gap-3 text-sm font-medium text-foreground">
+              <input
+                type="checkbox"
+                checked={assignment.is_head}
+                onChange={(e) =>
+                  setAssignment((current) => ({ ...current, is_head: e.target.checked }))
+                }
+                className="w-4 h-4 rounded border-border text-accent focus:ring-accent"
+              />
+              Make this person head of the selected team
+            </label>
+            <button
+              onClick={handleAssignMember}
+              disabled={isAssigning || users.length === 0 || teams.length === 0}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-accent text-accent-foreground text-sm font-medium transition-colors hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isAssigning ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
+              {selectedExistingMember ? 'Update Member' : 'Add Member'}
+            </button>
+          </div>
+        </div>
+
+        {selectedExistingMember ? (
+          <p className="mt-4 text-sm text-muted-foreground">
+            This user is already in {getTeamName(selectedExistingMember.team_id)}. Saving here will update their role and head status.
+          </p>
+        ) : null}
+      </div>
+
       {/* Filter and Download controls */}
       <div className="p-6 border-b border-border/50">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -284,7 +435,7 @@ const TeamMembersManager = ({ teams, onUpdate }: TeamMembersManagerProps) => {
           <div className="text-center py-12 text-muted-foreground">
             <Users className="w-12 h-12 mx-auto mb-3 opacity-50" />
             <p>No team members yet</p>
-            <p className="text-sm mt-1">Members are added when applications are accepted</p>
+            <p className="text-sm mt-1">Use the form above to add one directly or accept an application.</p>
           </div>
         )}
       </div>

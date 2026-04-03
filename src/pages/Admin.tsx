@@ -398,7 +398,7 @@ const Admin = () => {
                         <p className="text-sm text-muted-foreground mt-1">Manage accepted members and their team badges</p>
                       </div>
                     </div>
-                    <TeamMembersManager teams={teams} onUpdate={fetchData} />
+                    <TeamMembersManager teams={teams} users={users} onUpdate={fetchData} />
                   </div>
                 )}
 

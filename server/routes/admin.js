@@ -589,6 +589,50 @@ router.get('/team-members', requireAuth, async (req, res) => {
   }
 });
 
+router.post('/team-members', requireAuth, async (req, res) => {
+  const teamId = req.body?.team_id || null;
+  const userId = req.body?.user_id || null;
+  const positionTitle = String(req.body?.position_title || '').trim();
+  const nextIsHead = Boolean(req.body?.is_head);
+
+  if (!teamId || !userId || !positionTitle) {
+    res.status(400).json({ error: 'user_id, team_id, and position_title are required' });
+    return;
+  }
+
+  if (!canManageTeam(req.viewer, teamId)) {
+    res.status(403).json({ error: 'Team access denied' });
+    return;
+  }
+
+  try {
+    const member = await withTransaction(async (client) => {
+      if (nextIsHead) {
+        await client.query('UPDATE team_members SET is_head = false WHERE team_id = $1', [teamId]);
+      }
+
+      const { rows } = await client.query(
+        `
+          INSERT INTO team_members (user_id, team_id, position_title, is_head)
+          VALUES ($1, $2, $3, $4)
+          ON CONFLICT (user_id, team_id)
+          DO UPDATE SET
+            position_title = EXCLUDED.position_title,
+            is_head = EXCLUDED.is_head
+          RETURNING *
+        `,
+        [userId, teamId, positionTitle, nextIsHead]
+      );
+
+      return rows[0];
+    });
+
+    res.status(201).json(member);
+  } catch (error) {
+    sendError(res, error);
+  }
+});
+
 router.patch('/team-members/:id', requireAuth, async (req, res) => {
   try {
     const { rows } = await query('SELECT team_id FROM team_members WHERE id = $1', [req.params.id]);
