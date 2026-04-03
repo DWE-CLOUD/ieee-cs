@@ -1,4 +1,5 @@
 import fs from 'node:fs/promises';
+import fs from 'node:fs/promises';
 import crypto from 'node:crypto';
 import path from 'node:path';
 import express from 'express';
@@ -198,7 +199,11 @@ router.get('/image', async (req, res) => {
     res.setHeader('Vary', 'Accept');
     res.sendFile(cachePath);
   } catch (error) {
-    sendError(res, error);
+    console.error('Image optimization failed, falling back to original image', {
+      src,
+      message: error instanceof Error ? error.message : String(error),
+    });
+    res.sendFile(sourcePath);
   }
 });
 
