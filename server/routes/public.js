@@ -704,7 +704,7 @@ router.get('/member-profiles/:identifier', async (req, res) => {
         WHERE tm.user_id = $1
         ORDER BY tm.is_head DESC, tm.joined_at ASC
       `,
-      [req.params.userId]
+      [profile.user_id]
     );
 
     if (memberships.length === 0) {
