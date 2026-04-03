@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import multer from 'multer';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
@@ -250,3 +251,14 @@ export const sendError = (res, error) => {
 
 export const hashPassword = (password) => bcrypt.hash(password, 10);
 export const verifyPassword = (password, hash) => bcrypt.compare(password, hash);
+
+export const generatePlainToken = () => crypto.randomBytes(32).toString('hex');
+export const hashToken = (token) => crypto.createHash('sha256').update(String(token)).digest('hex');
+
+export const buildAbsoluteUrl = (requestPath) => {
+  if (!config.appUrl) {
+    return requestPath;
+  }
+
+  return new URL(requestPath, config.appUrl).toString();
+};

@@ -19,6 +19,15 @@ export const config = {
   allowedOrigins: parseList(process.env.ALLOWED_ORIGINS),
   adminEmails: parseList(process.env.ADMIN_EMAILS),
   cookieName: process.env.SESSION_COOKIE_NAME || 'ppp_session',
+  appName: process.env.APP_NAME || 'IEEE Computer Society',
+  smtpHost: process.env.SMTP_HOST || '',
+  smtpPort: Number(process.env.SMTP_PORT || 465),
+  smtpSecure: String(process.env.SMTP_SECURE || 'true').toLowerCase() !== 'false',
+  smtpUser: process.env.SMTP_USER || '',
+  smtpPass: process.env.SMTP_PASS || '',
+  mailFrom: process.env.MAIL_FROM || process.env.SMTP_USER || '',
+  passwordResetPath: process.env.PASSWORD_RESET_PATH || '/reset-password',
+  magicLoginPath: process.env.MAGIC_LOGIN_PATH || '/magic-login',
 };
 
 export const isProduction = config.nodeEnv === 'production';

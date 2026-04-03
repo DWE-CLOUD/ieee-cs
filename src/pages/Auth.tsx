@@ -5,6 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import ieeeLogo from '@/assets/ieee-logo.png';
+import { api } from '@/lib/api';
 
 const emailSchema = z.string().email('Please enter a valid email address');
 const passwordSchema = z.string().min(6, 'Password must be at least 6 characters');
@@ -19,6 +20,7 @@ const Auth = () => {
   const [fullName, setFullName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isMagicLoading, setIsMagicLoading] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string; name?: string }>({});
   const [isLoaded, setIsLoaded] = useState(false);
 
@@ -84,6 +86,26 @@ const Auth = () => {
       }
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleMagicLogin = async () => {
+    const emailResult = emailSchema.safeParse(email);
+    if (!emailResult.success) {
+      setErrors((current) => ({ ...current, email: emailResult.error.errors[0].message }));
+      return;
+    }
+
+    setIsMagicLoading(true);
+    try {
+      const { message } = await api.post<{ message?: string }>('/api/auth/magic-link', {
+        email,
+      });
+      toast.success(message || 'If that account exists, a magic login link has been sent.');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to send magic link');
+    } finally {
+      setIsMagicLoading(false);
     }
   };
 
@@ -181,6 +203,13 @@ const Auth = () => {
                   </button>
                 </div>
                 {errors.password && <p className="mt-1 text-xs text-destructive">{errors.password}</p>}
+                {mode === 'login' && (
+                  <div className="mt-2 text-right">
+                    <Link to="/forgot-password" className="text-sm text-accent hover:underline font-medium">
+                      Forgot password?
+                    </Link>
+                  </div>
+                )}
               </div>
 
               <button
@@ -200,6 +229,29 @@ const Auth = () => {
                 )}
               </button>
             </form>
+
+            {mode === 'login' && (
+              <div className="mt-6 pt-6 border-t border-border/50">
+                <p className="text-center text-sm text-muted-foreground mb-4">
+                  Prefer passwordless access?
+                </p>
+                <button
+                  type="button"
+                  onClick={handleMagicLogin}
+                  disabled={isMagicLoading}
+                  className="w-full py-3 rounded-xl border border-border text-foreground font-medium transition-all duration-300 hover:bg-muted/40 disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {isMagicLoading ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      Sending magic link...
+                    </>
+                  ) : (
+                    'Send Magic Login Link'
+                  )}
+                </button>
+              </div>
+            )}
 
             <p className="mt-6 text-center text-sm text-muted-foreground">
               {mode === 'login' ? (

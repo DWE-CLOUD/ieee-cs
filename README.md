@@ -80,6 +80,13 @@ JWT_SECRET=<long-random-secret>
 ADMIN_EMAILS=your-email@example.com
 PUBLIC_APP_URL=https://your-service.up.railway.app
 ALLOWED_ORIGINS=https://your-service.up.railway.app
+APP_NAME=IEEE Computer Society
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=465
+SMTP_SECURE=true
+SMTP_USER=your-email@gmail.com
+SMTP_PASS=your-gmail-app-password
+MAIL_FROM=your-email@gmail.com
 ```
 
 Notes:
@@ -89,6 +96,7 @@ Notes:
 - `ADMIN_EMAILS`: comma-separated if you want more than one admin email
 - `PUBLIC_APP_URL`: use your Railway public URL first, then replace it later with your custom domain if needed
 - `ALLOWED_ORIGINS`: should match the frontend URL that will open the app in the browser
+- `SMTP_*` and `MAIL_FROM`: required for welcome emails, forgot-password emails, and magic login emails
 
 Optional:
 
@@ -177,6 +185,13 @@ JWT_SECRET=replace-with-a-long-random-secret
 ADMIN_EMAILS=you@example.com
 PUBLIC_APP_URL=http://localhost:3000
 ALLOWED_ORIGINS=http://localhost:8080
+APP_NAME=IEEE Computer Society
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=465
+SMTP_SECURE=true
+SMTP_USER=your-email@gmail.com
+SMTP_PASS=your-gmail-app-password
+MAIL_FROM=your-email@gmail.com
 ```
 
 ### Step 3: Start the backend
@@ -217,6 +232,26 @@ On startup, the backend will:
 4. ensure the upload directories exist
 
 You do not need to run Supabase migrations anymore.
+
+## Email auth features
+
+This app now supports:
+
+1. welcome email after signup
+2. forgot-password email with reset link
+3. magic login email with one-time sign-in link
+
+Required for those features:
+
+1. set `PUBLIC_APP_URL` correctly
+2. set Gmail SMTP variables in Railway
+3. use a Gmail app password, not your normal Gmail password
+
+Frontend routes used by email links:
+
+- `/forgot-password`
+- `/reset-password`
+- `/magic-login`
 
 ## Important limitation if you already used Supabase
 

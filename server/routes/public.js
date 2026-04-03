@@ -2,9 +2,12 @@ import path from 'node:path';
 import express from 'express';
 import { query, withTransaction } from '../db.js';
 import {
+  buildAbsoluteUrl,
   canManageTeam,
   clearSessionCookie,
   ensurePositionAccess,
+  generatePlainToken,
+  hashToken,
   hashPassword,
   isAdminEmail,
   normalizeEmail,
@@ -18,8 +21,72 @@ import {
   verifyPassword,
   writeUpload,
 } from '../app-lib.js';
+import { config } from '../config.js';
+import { sendEmail } from '../mailer.js';
+import {
+  buildMagicLoginEmail,
+  buildPasswordResetEmail,
+  buildWelcomeEmail,
+} from '../email-templates.js';
 
 const router = express.Router();
+
+const PASSWORD_RESET_WINDOW_MS = 1000 * 60 * 60;
+const MAGIC_LOGIN_WINDOW_MS = 1000 * 60 * 20;
+
+const persistAuthToken = async (userId, purpose, durationMs) => {
+  const token = generatePlainToken();
+  const tokenHash = hashToken(token);
+  const expiresAt = new Date(Date.now() + durationMs).toISOString();
+
+  await query(
+    `
+      INSERT INTO auth_tokens (user_id, purpose, token_hash, expires_at)
+      VALUES ($1, $2, $3, $4)
+    `,
+    [userId, purpose, tokenHash, expiresAt]
+  );
+
+  return token;
+};
+
+const consumeAuthToken = async (purpose, plainToken) => {
+  const tokenHash = hashToken(plainToken);
+  const { rows } = await query(
+    `
+      UPDATE auth_tokens
+      SET consumed_at = now()
+      WHERE token_hash = $1
+        AND purpose = $2
+        AND consumed_at IS NULL
+        AND expires_at > now()
+      RETURNING user_id
+    `,
+    [tokenHash, purpose]
+  );
+
+  return rows[0]?.user_id || null;
+};
+
+const sendWelcomeEmailSafely = async ({ email, fullName }) => {
+  try {
+    const template = buildWelcomeEmail({ email, fullName });
+    await sendEmail({
+      to: email,
+      subject: template.subject,
+      html: template.html,
+      text: template.text,
+    });
+  } catch (error) {
+    console.error('Welcome email failed', error);
+  }
+};
+
+const buildPasswordResetUrl = (token) =>
+  buildAbsoluteUrl(`${config.passwordResetPath}?token=${encodeURIComponent(token)}`);
+
+const buildMagicLoginUrl = (token) =>
+  buildAbsoluteUrl(`${config.magicLoginPath}?token=${encodeURIComponent(token)}`);
 
 router.get('/health', (_req, res) => {
   res.json({ ok: true });
@@ -104,12 +171,145 @@ router.post('/auth/signup', async (req, res) => {
     });
 
     setSessionCookie(res, user);
+    void sendWelcomeEmailSafely({ email: normalizedEmail, fullName });
     res.status(201).json({ ok: true });
   } catch (error) {
     if (String(error.message).includes('users_email_key')) {
       res.status(409).json({ error: 'An account with this email already exists' });
       return;
     }
+    sendError(res, error);
+  }
+});
+
+router.post('/auth/forgot-password', async (req, res) => {
+  const { email } = req.body || {};
+  if (!email) {
+    res.status(400).json({ error: 'Email is required' });
+    return;
+  }
+
+  try {
+    const normalizedEmail = normalizeEmail(email);
+    const { rows } = await query('SELECT id, email FROM users WHERE email = $1', [normalizedEmail]);
+    const user = rows[0];
+
+    if (user) {
+      await query(
+        "DELETE FROM auth_tokens WHERE user_id = $1 AND purpose = 'password_reset'",
+        [user.id]
+      );
+      const token = await persistAuthToken(user.id, 'password_reset', PASSWORD_RESET_WINDOW_MS);
+      const resetUrl = buildPasswordResetUrl(token);
+      const template = buildPasswordResetEmail({ email: user.email, resetUrl });
+      await sendEmail({
+        to: user.email,
+        subject: template.subject,
+        html: template.html,
+        text: template.text,
+      });
+    }
+
+    res.json({
+      ok: true,
+      message: 'If an account exists for that email, a reset link has been sent.',
+    });
+  } catch (error) {
+    sendError(res, error);
+  }
+});
+
+router.post('/auth/reset-password', async (req, res) => {
+  const { token, password } = req.body || {};
+  if (!token || !password) {
+    res.status(400).json({ error: 'Token and password are required' });
+    return;
+  }
+
+  if (String(password).length < 6) {
+    res.status(400).json({ error: 'Password must be at least 6 characters' });
+    return;
+  }
+
+  try {
+    const userId = await consumeAuthToken('password_reset', token);
+    if (!userId) {
+      res.status(400).json({ error: 'This reset link is invalid or has expired' });
+      return;
+    }
+
+    const passwordHash = await hashPassword(password);
+    await query('UPDATE users SET password_hash = $2 WHERE id = $1', [userId, passwordHash]);
+    await query("DELETE FROM auth_tokens WHERE user_id = $1 AND purpose = 'password_reset'", [userId]);
+
+    res.json({ ok: true });
+  } catch (error) {
+    sendError(res, error);
+  }
+});
+
+router.post('/auth/magic-link', async (req, res) => {
+  const { email } = req.body || {};
+  if (!email) {
+    res.status(400).json({ error: 'Email is required' });
+    return;
+  }
+
+  try {
+    const normalizedEmail = normalizeEmail(email);
+    const { rows } = await query('SELECT id, email FROM users WHERE email = $1', [normalizedEmail]);
+    const user = rows[0];
+
+    if (user) {
+      await query(
+        "DELETE FROM auth_tokens WHERE user_id = $1 AND purpose = 'magic_login'",
+        [user.id]
+      );
+      const token = await persistAuthToken(user.id, 'magic_login', MAGIC_LOGIN_WINDOW_MS);
+      const magicUrl = buildMagicLoginUrl(token);
+      const template = buildMagicLoginEmail({ email: user.email, magicUrl });
+      await sendEmail({
+        to: user.email,
+        subject: template.subject,
+        html: template.html,
+        text: template.text,
+      });
+    }
+
+    res.json({
+      ok: true,
+      message: 'If an account exists for that email, a magic login link has been sent.',
+    });
+  } catch (error) {
+    sendError(res, error);
+  }
+});
+
+router.post('/auth/magic/verify', async (req, res) => {
+  const { token } = req.body || {};
+  if (!token) {
+    res.status(400).json({ error: 'Token is required' });
+    return;
+  }
+
+  try {
+    const userId = await consumeAuthToken('magic_login', token);
+    if (!userId) {
+      res.status(400).json({ error: 'This magic link is invalid or has expired' });
+      return;
+    }
+
+    const { rows } = await query('SELECT id, email FROM users WHERE id = $1', [userId]);
+    const user = rows[0];
+    if (!user) {
+      res.status(400).json({ error: 'User not found' });
+      return;
+    }
+
+    await query("DELETE FROM auth_tokens WHERE user_id = $1 AND purpose = 'magic_login'", [userId]);
+    setSessionCookie(res, user);
+    res.json({ ok: true });
+  } catch (error) {
     sendError(res, error);
   }
 });

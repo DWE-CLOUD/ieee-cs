@@ -8,6 +8,9 @@ import Index from "./pages/Index";
 import Install from "./pages/Install";
 import Positions from "./pages/Positions";
 import Auth from "./pages/Auth";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
+import MagicLogin from "./pages/MagicLogin";
 import Profile from "./pages/Profile";
 import Admin from "./pages/Admin";
 import Gallery from "./pages/Gallery";
@@ -27,6 +30,9 @@ const App = () => (
             <Route path="/install" element={<Install />} />
             <Route path="/positions" element={<Positions />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/magic-login" element={<MagicLogin />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="/gallery" element={<Gallery />} />
