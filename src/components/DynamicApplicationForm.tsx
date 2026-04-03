@@ -114,7 +114,6 @@ export const DynamicApplicationForm = ({ position, onClose, onSuccess }: Dynamic
 
         if (responseValue && typeof responseValue === 'string') {
           responses.push({
-            application_id: application.id,
             field_id: field.id,
             field_label: field.label,
             field_type: field.type,
