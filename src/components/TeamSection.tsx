@@ -3,6 +3,7 @@ import { useState, useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { api } from "@/lib/api";
 import { useHomeContent } from "@/components/home/HomeContentProvider";
+import { getMemberProfilePath } from "@/lib/members";
 
 interface TeamMember {
   id: string;
@@ -13,6 +14,7 @@ interface TeamMember {
     display_name: string | null;
     avatar_url: string | null;
     headline?: string | null;
+    public_slug?: string | null;
     linkedin_url: string | null;
     github_url: string | null;
   };
@@ -301,130 +303,65 @@ const TeamSection = () => {
                       if (teamHead && teamHead.profiles.avatar_url) {
                         return (
                           <>
-                            {/* Animated glow rings behind avatar */}
-                            <div className="absolute inset-0 flex items-center justify-center">
-                              {/* Outer pulsing ring */}
-                              <div 
-                                className={`
-                                  absolute w-32 md:w-56 h-32 md:h-56 rounded-full
-                                  bg-gradient-to-r from-accent/20 via-primary/10 to-accent/20
-                                  transition-all duration-1000 ease-out animate-pulse
-                                  ${isHovered ? 'scale-110 opacity-80' : 'scale-100 opacity-40'}
-                                `} 
-                              />
-                              {/* Middle gradient ring */}
-                              <div 
-                                className={`
-                                  absolute w-28 md:w-48 h-28 md:h-48 rounded-full
-                                  border-2 border-accent/30
-                                  transition-all duration-700 ease-out
-                                  ${isHovered ? 'scale-125 opacity-0 rotate-45' : 'scale-100 opacity-100 rotate-0'}
-                                `} 
-                              />
-                              {/* Inner decorative ring */}
-                              <div 
-                                className={`
-                                  absolute w-24 md:w-42 h-24 md:h-42 rounded-full
-                                  border border-foreground/10 border-dashed
-                                  transition-all duration-500 ease-out
-                                  ${isHovered ? 'scale-150 opacity-0 -rotate-90' : 'scale-100 opacity-60 rotate-0'}
-                                `} 
-                              />
-                            </div>
+                            <div
+                              className="absolute inset-6 md:inset-8 rounded-[28px] border backdrop-blur-sm"
+                              style={{
+                                background: `linear-gradient(180deg, ${team.color}12 0%, rgba(255,255,255,0.72) 100%)`,
+                                borderColor: `${team.color}2a`,
+                              }}
+                            />
 
-                            {/* Team Head Avatar with enhanced styling */}
-                            <div className="absolute inset-0 flex items-center justify-center">
-                              {/* Glowing backdrop */}
-                              <div 
-                                className={`
-                                  absolute w-22 md:w-40 h-22 md:h-40 rounded-full
-                                  bg-gradient-to-br from-accent/40 to-primary/20 blur-xl
-                                  transition-all duration-500 ease-out
-                                  ${isHovered ? 'scale-125 opacity-80' : 'scale-100 opacity-50'}
-                                `}
-                              />
-                              {/* Avatar container */}
-                              <div 
-                                className={`
-                                  relative z-10 w-20 md:w-36 h-20 md:h-36 rounded-full overflow-hidden
-                                  ring-4 ring-background/80 shadow-2xl
-                                  transition-all duration-500 ease-out
-                                  ${isHovered ? 'scale-110 ring-accent/50' : 'scale-100'}
-                                `}
+                            <div className="absolute top-4 left-4 md:top-6 md:left-6 z-10">
+                              <span
+                                className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[10px] md:text-xs font-semibold uppercase tracking-[0.22em] backdrop-blur-sm"
                                 style={{
-                                  boxShadow: isHovered 
-                                    ? '0 25px 50px -12px rgba(0, 0, 0, 0.4), 0 0 40px rgba(var(--accent), 0.3)' 
-                                    : '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
+                                  backgroundColor: 'rgba(255,255,255,0.85)',
+                                  color: team.color,
                                 }}
                               >
-                                <img 
-                                  src={teamHead.profiles.avatar_url} 
-                                  alt={teamHead.profiles.display_name || 'Team Head'}
-                                  className={`
-                                    w-full h-full object-cover transition-transform duration-700
-                                    ${isHovered ? 'scale-110' : 'scale-100'}
-                                  `}
-                                />
-                                {/* Overlay gradient on hover */}
-                                <div 
-                                  className={`
-                                    absolute inset-0 bg-gradient-to-t from-foreground/20 to-transparent
-                                    transition-opacity duration-300
-                                    ${isHovered ? 'opacity-100' : 'opacity-0'}
-                                  `}
-                                />
-                              </div>
-                              
-                              {/* Crown badge - enhanced */}
-                              <div 
-                                className={`
-                                  absolute z-20 left-1/2 -translate-x-1/2
-                                  w-8 md:w-10 h-8 md:h-10 rounded-full 
-                                  bg-gradient-to-br from-accent to-accent/80 
-                                  flex items-center justify-center
-                                  shadow-lg transition-all duration-500 ease-out
-                                  ${isHovered ? 'scale-110 -translate-y-1 shadow-accent/40' : 'scale-100'}
-                                `}
-                                style={{ 
-                                  top: 'calc(50% - 3.5rem)', 
-                                  marginTop: '-1.5rem',
-                                  boxShadow: isHovered 
-                                    ? '0 8px 25px -5px rgba(var(--accent), 0.5)' 
-                                    : '0 4px 15px -3px rgba(0, 0, 0, 0.3)'
-                                }}
-                              >
-                                <Crown className={`
-                                  w-4 md:w-5 h-4 md:h-5 text-accent-foreground
-                                  transition-transform duration-300
-                                  ${isHovered ? 'scale-110' : 'scale-100'}
-                                `} />
+                                <Crown className="w-3 h-3" />
+                                Domain Head
+                              </span>
+                            </div>
+
+                            <div className="absolute inset-0 flex items-center justify-center px-6">
+                              <div className="w-full max-w-[220px]">
+                                <div
+                                  className={`relative mx-auto aspect-[4/5] overflow-hidden rounded-[28px] border border-white/70 shadow-[0_30px_80px_-40px_rgba(15,23,42,0.45)] transition-all duration-500 ${
+                                    isHovered ? 'scale-[1.03] -translate-y-1' : 'scale-100'
+                                  }`}
+                                >
+                                  <img
+                                    src={teamHead.profiles.avatar_url}
+                                    alt={teamHead.profiles.display_name || 'Team Head'}
+                                    className={`w-full h-full object-cover transition-transform duration-700 ${
+                                      isHovered ? 'scale-105' : 'scale-100'
+                                    }`}
+                                  />
+                                  <div className="absolute inset-0 bg-gradient-to-t from-foreground/50 via-transparent to-transparent" />
+                                </div>
                               </div>
                             </div>
 
-                            {/* Head name badge - enhanced design */}
-                            <div 
-                              className={`
-                                absolute bottom-10 md:bottom-14 left-1/2 -translate-x-1/2 z-10
-                                px-4 py-2 rounded-2xl 
-                                bg-gradient-to-br from-background/95 to-background/85
-                                backdrop-blur-md shadow-xl border border-border/30
-                                transition-all duration-500 ease-out
-                                ${isHovered ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-4 scale-95'}
-                              `}
-                            >
+                            <div className="absolute inset-x-4 bottom-4 md:inset-x-6 md:bottom-6 z-10">
                               <Link
-                                to={`/members/${teamHead.user_id}`}
+                                to={getMemberProfilePath(teamHead.profiles.public_slug, teamHead.user_id)}
                                 onClick={(e) => e.stopPropagation()}
-                                className="block"
+                                className="block rounded-[24px] border border-white/70 bg-white/90 px-4 py-3 shadow-xl backdrop-blur-md transition-transform duration-300 hover:-translate-y-0.5"
                               >
-                                <div className="flex items-center gap-2">
-                                  <div className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
-                                  <p className="text-xs md:text-sm font-semibold text-foreground whitespace-nowrap hover:text-accent transition-colors">
-                                    {teamHead.profiles.display_name}
-                                  </p>
+                                <div className="flex items-center justify-between gap-3">
+                                  <div className="min-w-0">
+                                    <p className="text-sm md:text-base font-semibold text-foreground truncate">
+                                      {teamHead.profiles.display_name}
+                                    </p>
+                                    <p className="text-[11px] md:text-xs text-muted-foreground truncate">
+                                      {teamHead.profiles.headline || `${team.name} team lead`}
+                                    </p>
+                                  </div>
+                                  <ArrowUpRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                                 </div>
-                                <p className="text-[10px] md:text-xs text-accent font-medium text-center mt-0.5">
-                                  Team Head • View About
+                                <p className="mt-2 text-[10px] md:text-xs font-medium" style={{ color: team.color }}>
+                                  View profile
                                 </p>
                               </Link>
                             </div>
@@ -671,7 +608,7 @@ const TeamSection = () => {
                                 </span>
                               </div>
                               <Link
-                                to={`/members/${teamHead.user_id}`}
+                                to={getMemberProfilePath(teamHead.profiles.public_slug, teamHead.user_id)}
                                 onClick={(e) => e.stopPropagation()}
                                 className="text-sm font-medium text-foreground mt-1 hover:text-accent transition-colors inline-block"
                               >
@@ -769,7 +706,7 @@ const TeamSection = () => {
                             }}
                           >
                             <Link
-                              to={`/members/${member.user_id}`}
+                              to={getMemberProfilePath(member.profiles.public_slug, member.user_id)}
                               onClick={(e) => e.stopPropagation()}
                               className="w-14 h-14 rounded-full overflow-hidden bg-muted flex-shrink-0 ring-2 ring-background flex items-center justify-center"
                             >
@@ -788,7 +725,7 @@ const TeamSection = () => {
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2">
                                 <Link
-                                  to={`/members/${member.user_id}`}
+                                  to={getMemberProfilePath(member.profiles.public_slug, member.user_id)}
                                   onClick={(e) => e.stopPropagation()}
                                   className="font-medium text-foreground truncate hover:text-accent transition-colors"
                                 >

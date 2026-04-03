@@ -33,6 +33,24 @@ const router = express.Router();
 
 const PASSWORD_RESET_WINDOW_MS = 1000 * 60 * 60;
 const MAGIC_LOGIN_WINDOW_MS = 1000 * 60 * 20;
+const HEX_COLOR_PATTERN = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
+
+const normalizeColor = (value) => {
+  if (!value) {
+    return null;
+  }
+
+  const trimmed = String(value).trim();
+  if (!HEX_COLOR_PATTERN.test(trimmed)) {
+    return null;
+  }
+
+  if (trimmed.length === 4) {
+    return `#${trimmed[1]}${trimmed[1]}${trimmed[2]}${trimmed[2]}${trimmed[3]}${trimmed[3]}`.toLowerCase();
+  }
+
+  return trimmed.toLowerCase();
+};
 
 const persistAuthToken = async (userId, purpose, durationMs) => {
   const token = generatePlainToken();
@@ -483,6 +501,7 @@ router.get('/teams-with-members', async (_req, res) => {
             'display_name', p.display_name,
             'avatar_url', p.avatar_url,
             'headline', p.headline,
+            'public_slug', p.public_slug,
             'linkedin_url', p.linkedin_url,
             'github_url', p.github_url
           ) AS profiles
@@ -518,6 +537,19 @@ router.patch('/profile', requireAuth, async (req, res) => {
     location,
     website_url,
     cover_image_url,
+    public_slug,
+    theme_primary,
+    theme_secondary,
+    theme_surface,
+    profile_intro_label,
+    about_title,
+    specialties_title,
+    highlights_title,
+    connect_title,
+    focus_title,
+    focus_body,
+    cta_label,
+    cta_url,
     specialties,
     achievements,
     favorite_quote,
@@ -526,6 +558,14 @@ router.patch('/profile', requireAuth, async (req, res) => {
     twitter_url,
   } = req.body || {};
   try {
+    const normalizedSlug =
+      typeof public_slug === 'string' && public_slug.trim() ? toSlug(public_slug) : null;
+
+    if (typeof public_slug === 'string' && public_slug.trim() && normalizedSlug.length < 3) {
+      res.status(400).json({ error: 'Public slug must be at least 3 characters long' });
+      return;
+    }
+
     await query(
       `
         UPDATE profiles
@@ -537,12 +577,25 @@ router.patch('/profile', requireAuth, async (req, res) => {
           location = $6,
           website_url = $7,
           cover_image_url = $8,
-          specialties = $9,
-          achievements = $10,
-          favorite_quote = $11,
-          linkedin_url = $12,
-          github_url = $13,
-          twitter_url = $14
+          public_slug = $9,
+          theme_primary = $10,
+          theme_secondary = $11,
+          theme_surface = $12,
+          profile_intro_label = $13,
+          about_title = $14,
+          specialties_title = $15,
+          highlights_title = $16,
+          connect_title = $17,
+          focus_title = $18,
+          focus_body = $19,
+          cta_label = $20,
+          cta_url = $21,
+          specialties = $22,
+          achievements = $23,
+          favorite_quote = $24,
+          linkedin_url = $25,
+          github_url = $26,
+          twitter_url = $27
         WHERE user_id = $1
       `,
       [
@@ -554,6 +607,19 @@ router.patch('/profile', requireAuth, async (req, res) => {
         location || null,
         website_url || null,
         cover_image_url || null,
+        normalizedSlug,
+        normalizeColor(theme_primary),
+        normalizeColor(theme_secondary),
+        normalizeColor(theme_surface),
+        profile_intro_label || null,
+        about_title || null,
+        specialties_title || null,
+        highlights_title || null,
+        connect_title || null,
+        focus_title || null,
+        focus_body || null,
+        cta_label || null,
+        cta_url || null,
         parseArray(specialties),
         parseArray(achievements),
         favorite_quote || null,
@@ -564,11 +630,15 @@ router.patch('/profile', requireAuth, async (req, res) => {
     );
     res.json({ ok: true });
   } catch (error) {
+    if (String(error.message).includes('idx_profiles_public_slug_unique')) {
+      res.status(409).json({ error: 'That public slug is already in use' });
+      return;
+    }
     sendError(res, error);
   }
 });
 
-router.get('/member-profiles/:userId', async (req, res) => {
+router.get('/member-profiles/:identifier', async (req, res) => {
   try {
     const { rows: profileRows } = await query(
       `
@@ -581,6 +651,19 @@ router.get('/member-profiles/:userId', async (req, res) => {
           p.location,
           p.website_url,
           p.cover_image_url,
+          p.public_slug,
+          p.theme_primary,
+          p.theme_secondary,
+          p.theme_surface,
+          p.profile_intro_label,
+          p.about_title,
+          p.specialties_title,
+          p.highlights_title,
+          p.connect_title,
+          p.focus_title,
+          p.focus_body,
+          p.cta_label,
+          p.cta_url,
           p.specialties,
           p.achievements,
           p.favorite_quote,
@@ -589,9 +672,11 @@ router.get('/member-profiles/:userId', async (req, res) => {
           p.twitter_url
         FROM users u
         LEFT JOIN profiles p ON p.user_id = u.id
-        WHERE u.id = $1
+        WHERE lower(p.public_slug) = lower($1) OR u.id::text = $1
+        ORDER BY CASE WHEN lower(p.public_slug) = lower($1) THEN 0 ELSE 1 END
+        LIMIT 1
       `,
-      [req.params.userId]
+      [req.params.identifier]
     );
 
     const profile = profileRows[0];
@@ -636,6 +721,19 @@ router.get('/member-profiles/:userId', async (req, res) => {
       location: profile.location,
       website_url: profile.website_url,
       cover_image_url: profile.cover_image_url,
+      public_slug: profile.public_slug,
+      theme_primary: profile.theme_primary,
+      theme_secondary: profile.theme_secondary,
+      theme_surface: profile.theme_surface,
+      profile_intro_label: profile.profile_intro_label,
+      about_title: profile.about_title,
+      specialties_title: profile.specialties_title,
+      highlights_title: profile.highlights_title,
+      connect_title: profile.connect_title,
+      focus_title: profile.focus_title,
+      focus_body: profile.focus_body,
+      cta_label: profile.cta_label,
+      cta_url: profile.cta_url,
       specialties: profile.specialties || [],
       achievements: profile.achievements || [],
       favorite_quote: profile.favorite_quote,

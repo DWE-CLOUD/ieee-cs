@@ -37,7 +37,7 @@ const App = () => (
             <Route path="/profile" element={<Profile />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="/gallery" element={<Gallery />} />
-            <Route path="/members/:userId" element={<MemberProfile />} />
+            <Route path="/members/:identifier" element={<MemberProfile />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

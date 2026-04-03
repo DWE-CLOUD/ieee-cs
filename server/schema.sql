@@ -39,6 +39,19 @@ ALTER TABLE profiles ADD COLUMN IF NOT EXISTS cover_image_url TEXT;
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS specialties TEXT[] DEFAULT '{}';
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS achievements TEXT[] DEFAULT '{}';
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS favorite_quote TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS public_slug TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS theme_primary TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS theme_secondary TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS theme_surface TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS profile_intro_label TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS about_title TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS specialties_title TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS highlights_title TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS connect_title TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS focus_title TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS focus_body TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS cta_label TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS cta_url TEXT;
 
 CREATE TABLE IF NOT EXISTS user_roles (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -191,6 +204,7 @@ CREATE INDEX IF NOT EXISTS idx_team_managers_user_id ON team_managers(user_id);
 CREATE INDEX IF NOT EXISTS idx_team_members_team_id ON team_members(team_id);
 CREATE INDEX IF NOT EXISTS idx_team_members_user_id ON team_members(user_id);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_team_head_unique ON team_members(team_id) WHERE is_head = true;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_profiles_public_slug_unique ON profiles (lower(public_slug)) WHERE public_slug IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_gallery_images_album_id ON gallery_images(album_id);
 CREATE INDEX IF NOT EXISTS idx_auth_tokens_user_id ON auth_tokens(user_id);
 CREATE INDEX IF NOT EXISTS idx_auth_tokens_purpose ON auth_tokens(purpose);

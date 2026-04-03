@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, User, Phone, FileText, Linkedin, Github, Twitter, Save, Loader2, LogOut, ClipboardList, Camera, Upload, MapPin, Globe, Sparkles, ExternalLink } from 'lucide-react';
+import { ArrowLeft, User, Phone, FileText, Linkedin, Github, Twitter, Save, Loader2, LogOut, ClipboardList, Camera, Upload, MapPin, Globe, Sparkles, ExternalLink, Palette, Hash, LayoutTemplate, Link as LinkIcon } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import ieeeLogo from '@/assets/ieee-logo.png';
@@ -8,6 +8,7 @@ import ApplicationsTracker from '@/components/profile/ApplicationsTracker';
 import TeamBadges from '@/components/profile/TeamBadges';
 import TeamManagerDownloads from '@/components/profile/TeamManagerDownloads';
 import { api } from '@/lib/api';
+import { getMemberProfilePath } from '@/lib/members';
 
 const Profile = () => {
   const { user, profile, isAdmin, isManager, managedTeams, loading, signOut, refreshProfile } = useAuth();
@@ -26,6 +27,19 @@ const Profile = () => {
     location: '',
     website_url: '',
     cover_image_url: '',
+    public_slug: '',
+    theme_primary: '#1d4ed8',
+    theme_secondary: '#0f172a',
+    theme_surface: '#f8fafc',
+    profile_intro_label: '',
+    about_title: '',
+    specialties_title: '',
+    highlights_title: '',
+    connect_title: '',
+    focus_title: '',
+    focus_body: '',
+    cta_label: '',
+    cta_url: '',
     specialties: '',
     achievements: '',
     favorite_quote: '',
@@ -54,6 +68,19 @@ const Profile = () => {
         location: profile.location || '',
         website_url: profile.website_url || '',
         cover_image_url: profile.cover_image_url || '',
+        public_slug: profile.public_slug || '',
+        theme_primary: profile.theme_primary || '#1d4ed8',
+        theme_secondary: profile.theme_secondary || '#0f172a',
+        theme_surface: profile.theme_surface || '#f8fafc',
+        profile_intro_label: profile.profile_intro_label || '',
+        about_title: profile.about_title || '',
+        specialties_title: profile.specialties_title || '',
+        highlights_title: profile.highlights_title || '',
+        connect_title: profile.connect_title || '',
+        focus_title: profile.focus_title || '',
+        focus_body: profile.focus_body || '',
+        cta_label: profile.cta_label || '',
+        cta_url: profile.cta_url || '',
         specialties: (profile.specialties || []).join('\n'),
         achievements: (profile.achievements || []).join('\n'),
         favorite_quote: profile.favorite_quote || '',
@@ -126,6 +153,8 @@ const Profile = () => {
     navigate('/');
     toast.success('Signed out successfully');
   };
+
+  const publicProfilePath = getMemberProfilePath(profile?.public_slug, user?.id);
 
   if (loading) {
     return (
@@ -246,7 +275,7 @@ const Profile = () => {
                 {user && <TeamBadges userId={user.id} />}
                 {isMember && user && (
                   <Link
-                    to={`/members/${user.id}`}
+                    to={publicProfilePath}
                     className="mt-2 inline-flex items-center gap-1 text-xs text-accent hover:text-accent/80 transition-colors"
                   >
                     <ExternalLink className="w-3 h-3" />
@@ -282,36 +311,54 @@ const Profile = () => {
                 />
               </div>
 
-              {/* Phone */}
-              <div>
-                <label className="flex items-center gap-2 text-sm font-medium text-foreground mb-2">
-                  <Sparkles className="w-4 h-4 text-muted-foreground" />
-                  Headline
-                </label>
-                <input
-                  type="text"
-                  value={formData.headline}
-                  onChange={(e) => setFormData({ ...formData, headline: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl border border-border bg-background transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-accent/50"
-                  placeholder="Frontend lead, builder, design systems enthusiast"
-                />
-              </div>
-
-              <div>
-                <label className="flex items-center gap-2 text-sm font-medium text-foreground mb-2">
-                  <Phone className="w-4 h-4 text-muted-foreground" />
-                  Phone Number
-                </label>
-                <input
-                  type="tel"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl border border-border bg-background transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-accent/50"
-                  placeholder="+91 98765 43210"
-                />
-              </div>
-
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="flex items-center gap-2 text-sm font-medium text-foreground mb-2">
+                    <Sparkles className="w-4 h-4 text-muted-foreground" />
+                    Headline
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.headline}
+                    onChange={(e) => setFormData({ ...formData, headline: e.target.value })}
+                    className="w-full px-4 py-3 rounded-xl border border-border bg-background transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-accent/50"
+                    placeholder="Frontend lead, builder, design systems enthusiast"
+                  />
+                </div>
+
+                <div>
+                  <label className="flex items-center gap-2 text-sm font-medium text-foreground mb-2">
+                    <Hash className="w-4 h-4 text-muted-foreground" />
+                    Public Slug
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.public_slug}
+                    onChange={(e) => setFormData({ ...formData, public_slug: e.target.value })}
+                    className="w-full px-4 py-3 rounded-xl border border-border bg-background transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-accent/50"
+                    placeholder="your-name"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Your page will open at `{getMemberProfilePath(formData.public_slug || null, user?.id)}`.
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div>
+                  <label className="flex items-center gap-2 text-sm font-medium text-foreground mb-2">
+                    <Phone className="w-4 h-4 text-muted-foreground" />
+                    Phone Number
+                  </label>
+                  <input
+                    type="tel"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    className="w-full px-4 py-3 rounded-xl border border-border bg-background transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-accent/50"
+                    placeholder="+91 98765 43210"
+                  />
+                </div>
+
                 <div>
                   <label className="flex items-center gap-2 text-sm font-medium text-foreground mb-2">
                     <MapPin className="w-4 h-4 text-muted-foreground" />
@@ -356,18 +403,165 @@ const Profile = () => {
                 />
               </div>
 
-              <div>
-                <label className="flex items-center gap-2 text-sm font-medium text-foreground mb-2">
-                  <Sparkles className="w-4 h-4 text-muted-foreground" />
-                  Cover Image URL
-                </label>
-                <input
-                  type="url"
-                  value={formData.cover_image_url}
-                  onChange={(e) => setFormData({ ...formData, cover_image_url: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl border border-border bg-background transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-accent/50"
-                  placeholder="https://images.example.com/cover.jpg"
-                />
+              <div className="pt-4 border-t border-border/50 space-y-6">
+                <div className="flex items-center gap-2">
+                  <Palette className="w-4 h-4 text-muted-foreground" />
+                  <h3 className="text-sm font-medium text-foreground">Page Look</h3>
+                </div>
+
+                <div>
+                  <label className="flex items-center gap-2 text-sm font-medium text-foreground mb-2">
+                    <Sparkles className="w-4 h-4 text-muted-foreground" />
+                    Cover Image URL
+                  </label>
+                  <input
+                    type="url"
+                    value={formData.cover_image_url}
+                    onChange={(e) => setFormData({ ...formData, cover_image_url: e.target.value })}
+                    className="w-full px-4 py-3 rounded-xl border border-border bg-background transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-accent/50"
+                    placeholder="https://images.example.com/cover.jpg"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-2">Primary Color</label>
+                    <input
+                      type="color"
+                      value={formData.theme_primary}
+                      onChange={(e) => setFormData({ ...formData, theme_primary: e.target.value })}
+                      className="w-full h-12 rounded-xl border border-border bg-background cursor-pointer"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-2">Secondary Color</label>
+                    <input
+                      type="color"
+                      value={formData.theme_secondary}
+                      onChange={(e) => setFormData({ ...formData, theme_secondary: e.target.value })}
+                      className="w-full h-12 rounded-xl border border-border bg-background cursor-pointer"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-2">Surface Color</label>
+                    <input
+                      type="color"
+                      value={formData.theme_surface}
+                      onChange={(e) => setFormData({ ...formData, theme_surface: e.target.value })}
+                      className="w-full h-12 rounded-xl border border-border bg-background cursor-pointer"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-border/50 space-y-6">
+                <div className="flex items-center gap-2">
+                  <LayoutTemplate className="w-4 h-4 text-muted-foreground" />
+                  <h3 className="text-sm font-medium text-foreground">Page Copy & Sections</h3>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-2">Hero Label</label>
+                    <input
+                      type="text"
+                      value={formData.profile_intro_label}
+                      onChange={(e) => setFormData({ ...formData, profile_intro_label: e.target.value })}
+                      className="w-full px-4 py-3 rounded-xl border border-border bg-background transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-accent/50"
+                      placeholder="IEEE CS Member Profile"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-2">About Section Title</label>
+                    <input
+                      type="text"
+                      value={formData.about_title}
+                      onChange={(e) => setFormData({ ...formData, about_title: e.target.value })}
+                      className="w-full px-4 py-3 rounded-xl border border-border bg-background transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-accent/50"
+                      placeholder="About"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-2">Specialties Title</label>
+                    <input
+                      type="text"
+                      value={formData.specialties_title}
+                      onChange={(e) => setFormData({ ...formData, specialties_title: e.target.value })}
+                      className="w-full px-4 py-3 rounded-xl border border-border bg-background transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-accent/50"
+                      placeholder="Specialties"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-2">Highlights Title</label>
+                    <input
+                      type="text"
+                      value={formData.highlights_title}
+                      onChange={(e) => setFormData({ ...formData, highlights_title: e.target.value })}
+                      className="w-full px-4 py-3 rounded-xl border border-border bg-background transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-accent/50"
+                      placeholder="Highlights"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-2">Connect Title</label>
+                    <input
+                      type="text"
+                      value={formData.connect_title}
+                      onChange={(e) => setFormData({ ...formData, connect_title: e.target.value })}
+                      className="w-full px-4 py-3 rounded-xl border border-border bg-background transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-accent/50"
+                      placeholder="Connect"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-2">Focus Card Title</label>
+                    <input
+                      type="text"
+                      value={formData.focus_title}
+                      onChange={(e) => setFormData({ ...formData, focus_title: e.target.value })}
+                      className="w-full px-4 py-3 rounded-xl border border-border bg-background transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-accent/50"
+                      placeholder="Currently Building"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">Focus Card Body</label>
+                  <textarea
+                    value={formData.focus_body}
+                    onChange={(e) => setFormData({ ...formData, focus_body: e.target.value })}
+                    rows={3}
+                    className="w-full px-4 py-3 rounded-xl border border-border bg-background transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-accent/50 resize-none"
+                    placeholder="What are you building, exploring, or leading right now?"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="flex items-center gap-2 text-sm font-medium text-foreground mb-2">
+                      <LinkIcon className="w-4 h-4 text-muted-foreground" />
+                      CTA Label
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.cta_label}
+                      onChange={(e) => setFormData({ ...formData, cta_label: e.target.value })}
+                      className="w-full px-4 py-3 rounded-xl border border-border bg-background transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-accent/50"
+                      placeholder="View Portfolio"
+                    />
+                  </div>
+                  <div>
+                    <label className="flex items-center gap-2 text-sm font-medium text-foreground mb-2">
+                      <Globe className="w-4 h-4 text-muted-foreground" />
+                      CTA URL
+                    </label>
+                    <input
+                      type="url"
+                      value={formData.cta_url}
+                      onChange={(e) => setFormData({ ...formData, cta_url: e.target.value })}
+                      className="w-full px-4 py-3 rounded-xl border border-border bg-background transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-accent/50"
+                      placeholder="https://yourportfolio.com/work"
+                    />
+                  </div>
+                </div>
               </div>
 
               <div>
