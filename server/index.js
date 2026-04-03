@@ -67,7 +67,27 @@ app.use(
 app.use(cookieParser());
 app.use(express.json({ limit: '10mb' }));
 app.use(authMiddleware);
-app.use('/uploads', express.static(publicUploadsDir, { fallthrough: true }));
+app.use(
+  '/uploads',
+  express.static(publicUploadsDir, {
+    fallthrough: true,
+    etag: true,
+    lastModified: true,
+    maxAge: '7d',
+    setHeaders(res, filePath) {
+      const normalizedPath = String(filePath).replace(/\\/g, '/').toLowerCase();
+
+      if (normalizedPath.includes('/gallery/')) {
+        res.setHeader('Cache-Control', 'public, max-age=2592000, immutable');
+        return;
+      }
+
+      if (normalizedPath.includes('/avatars/')) {
+        res.setHeader('Cache-Control', 'public, max-age=3600, must-revalidate');
+      }
+    },
+  })
+);
 
 app.use('/api', publicRoutes);
 app.use('/api/admin', adminRoutes);

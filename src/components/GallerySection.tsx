@@ -188,6 +188,10 @@ const GallerySection = () => {
                       <img
                         src={image.image_url}
                         alt={image.title}
+                        loading={isCenter ? "eager" : "lazy"}
+                        decoding="async"
+                        fetchPriority={isCenter ? "high" : "low"}
+                        sizes={isCenter ? "(min-width: 1024px) 500px, (min-width: 768px) 400px, 280px" : "(min-width: 1024px) 320px, 220px"}
                         className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                       />
                       
@@ -323,6 +327,9 @@ const GallerySection = () => {
             <img
               src={galleryImages[lightboxIndex].image_url}
               alt={galleryImages[lightboxIndex].title}
+              loading="eager"
+              decoding="async"
+              fetchPriority="high"
               className="max-w-full max-h-[85vh] object-contain rounded-xl shadow-2xl"
             />
             <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-foreground/80 to-transparent rounded-b-xl">
@@ -354,6 +361,9 @@ const GallerySection = () => {
                 <img
                   src={image.image_url}
                   alt={image.title}
+                  loading="lazy"
+                  decoding="async"
+                  fetchPriority="low"
                   className="w-full h-full object-cover"
                 />
               </button>

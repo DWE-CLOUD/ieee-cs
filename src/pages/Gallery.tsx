@@ -304,6 +304,10 @@ const Gallery = () => {
                         <img
                           src={image.image_url}
                           alt={image.title}
+                          loading={isCenter ? "eager" : "lazy"}
+                          decoding="async"
+                          fetchPriority={isCenter ? "high" : "low"}
+                          sizes={isCenter ? "(min-width: 1024px) 600px, (min-width: 768px) 450px, 300px" : "(min-width: 1024px) 400px, 240px"}
                           className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105"
                         />
                         
@@ -411,6 +415,10 @@ const Gallery = () => {
                     <img
                       src={image.image_url}
                       alt={image.title}
+                      loading="lazy"
+                      decoding="async"
+                      fetchPriority="low"
+                      sizes="(min-width: 1024px) 25vw, (min-width: 768px) 33vw, 50vw"
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-foreground/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
@@ -451,6 +459,10 @@ const Gallery = () => {
                         <img
                           src={album.cover_image_url}
                           alt={album.title}
+                          loading="lazy"
+                          decoding="async"
+                          fetchPriority="low"
+                          sizes="(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw"
                           className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                         />
                       ) : (
@@ -522,6 +534,9 @@ const Gallery = () => {
             <img
               src={albumImages[lightboxIndex].image_url}
               alt={albumImages[lightboxIndex].title}
+              loading="eager"
+              decoding="async"
+              fetchPriority="high"
               className="max-w-full max-h-[85vh] object-contain rounded-xl shadow-2xl"
             />
             <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-foreground/80 to-transparent rounded-b-xl">
@@ -553,6 +568,9 @@ const Gallery = () => {
                 <img
                   src={image.image_url}
                   alt={image.title}
+                  loading="lazy"
+                  decoding="async"
+                  fetchPriority="low"
                   className="w-full h-full object-cover"
                 />
               </button>

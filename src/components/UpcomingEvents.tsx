@@ -158,6 +158,10 @@ const UpcomingEvents = () => {
                     <img 
                       src={(event as Event).image_url!} 
                       alt={event.title}
+                      loading="lazy"
+                      decoding="async"
+                      fetchPriority="low"
+                      sizes="(min-width: 768px) 66vw, 100vw"
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                     />
                   </div>
