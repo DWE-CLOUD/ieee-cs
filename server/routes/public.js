@@ -482,6 +482,7 @@ router.get('/teams-with-members', async (_req, res) => {
           json_build_object(
             'display_name', p.display_name,
             'avatar_url', p.avatar_url,
+            'headline', p.headline,
             'linkedin_url', p.linkedin_url,
             'github_url', p.github_url
           ) AS profiles
@@ -509,7 +510,21 @@ router.get('/profile', requireAuth, async (req, res) => {
 });
 
 router.patch('/profile', requireAuth, async (req, res) => {
-  const { display_name, phone, bio, linkedin_url, github_url, twitter_url } = req.body || {};
+  const {
+    display_name,
+    phone,
+    bio,
+    headline,
+    location,
+    website_url,
+    cover_image_url,
+    specialties,
+    achievements,
+    favorite_quote,
+    linkedin_url,
+    github_url,
+    twitter_url,
+  } = req.body || {};
   try {
     await query(
       `
@@ -518,9 +533,16 @@ router.patch('/profile', requireAuth, async (req, res) => {
           display_name = $2,
           phone = $3,
           bio = $4,
-          linkedin_url = $5,
-          github_url = $6,
-          twitter_url = $7
+          headline = $5,
+          location = $6,
+          website_url = $7,
+          cover_image_url = $8,
+          specialties = $9,
+          achievements = $10,
+          favorite_quote = $11,
+          linkedin_url = $12,
+          github_url = $13,
+          twitter_url = $14
         WHERE user_id = $1
       `,
       [
@@ -528,12 +550,100 @@ router.patch('/profile', requireAuth, async (req, res) => {
         display_name || null,
         phone || null,
         bio || null,
+        headline || null,
+        location || null,
+        website_url || null,
+        cover_image_url || null,
+        parseArray(specialties),
+        parseArray(achievements),
+        favorite_quote || null,
         linkedin_url || null,
         github_url || null,
         twitter_url || null,
       ]
     );
     res.json({ ok: true });
+  } catch (error) {
+    sendError(res, error);
+  }
+});
+
+router.get('/member-profiles/:userId', async (req, res) => {
+  try {
+    const { rows: profileRows } = await query(
+      `
+        SELECT
+          u.id AS user_id,
+          p.display_name,
+          p.bio,
+          p.avatar_url,
+          p.headline,
+          p.location,
+          p.website_url,
+          p.cover_image_url,
+          p.specialties,
+          p.achievements,
+          p.favorite_quote,
+          p.linkedin_url,
+          p.github_url,
+          p.twitter_url
+        FROM users u
+        LEFT JOIN profiles p ON p.user_id = u.id
+        WHERE u.id = $1
+      `,
+      [req.params.userId]
+    );
+
+    const profile = profileRows[0];
+    if (!profile) {
+      res.status(404).json({ error: 'Member not found' });
+      return;
+    }
+
+    const { rows: memberships } = await query(
+      `
+        SELECT
+          tm.id,
+          tm.team_id,
+          tm.position_title,
+          tm.is_head,
+          tm.joined_at,
+          json_build_object(
+            'id', t.id,
+            'name', t.name,
+            'color', t.color,
+            'description', t.description
+          ) AS team
+        FROM team_members tm
+        JOIN teams t ON t.id = tm.team_id
+        WHERE tm.user_id = $1
+        ORDER BY tm.is_head DESC, tm.joined_at ASC
+      `,
+      [req.params.userId]
+    );
+
+    if (memberships.length === 0) {
+      res.status(404).json({ error: 'Member profile is not public' });
+      return;
+    }
+
+    res.json({
+      user_id: profile.user_id,
+      display_name: profile.display_name,
+      bio: profile.bio,
+      avatar_url: profile.avatar_url,
+      headline: profile.headline,
+      location: profile.location,
+      website_url: profile.website_url,
+      cover_image_url: profile.cover_image_url,
+      specialties: profile.specialties || [],
+      achievements: profile.achievements || [],
+      favorite_quote: profile.favorite_quote,
+      linkedin_url: profile.linkedin_url,
+      github_url: profile.github_url,
+      twitter_url: profile.twitter_url,
+      memberships,
+    });
   } catch (error) {
     sendError(res, error);
   }

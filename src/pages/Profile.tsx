@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, User, Phone, FileText, Linkedin, Github, Twitter, Save, Loader2, LogOut, ClipboardList, Camera, Upload } from 'lucide-react';
+import { ArrowLeft, User, Phone, FileText, Linkedin, Github, Twitter, Save, Loader2, LogOut, ClipboardList, Camera, Upload, MapPin, Globe, Sparkles, ExternalLink } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import ieeeLogo from '@/assets/ieee-logo.png';
@@ -15,12 +15,20 @@ const Profile = () => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [isMember, setIsMember] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [formData, setFormData] = useState({
     display_name: '',
     phone: '',
     bio: '',
+    headline: '',
+    location: '',
+    website_url: '',
+    cover_image_url: '',
+    specialties: '',
+    achievements: '',
+    favorite_quote: '',
     linkedin_url: '',
     github_url: '',
     twitter_url: '',
@@ -42,12 +50,28 @@ const Profile = () => {
         display_name: profile.display_name || '',
         phone: profile.phone || '',
         bio: profile.bio || '',
+        headline: profile.headline || '',
+        location: profile.location || '',
+        website_url: profile.website_url || '',
+        cover_image_url: profile.cover_image_url || '',
+        specialties: (profile.specialties || []).join('\n'),
+        achievements: (profile.achievements || []).join('\n'),
+        favorite_quote: profile.favorite_quote || '',
         linkedin_url: profile.linkedin_url || '',
         github_url: profile.github_url || '',
         twitter_url: profile.twitter_url || '',
       });
     }
   }, [profile]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    api
+      .get<{ id: string }[]>('/api/team-memberships/me')
+      .then((memberships) => setIsMember(memberships.length > 0))
+      .catch(() => setIsMember(false));
+  }, [user]);
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -207,6 +231,9 @@ const Profile = () => {
                 <h2 className="font-medium text-foreground text-lg">
                   {profile?.display_name || 'User'}
                 </h2>
+                {profile?.headline && (
+                  <p className="text-sm text-foreground/80 mt-1">{profile.headline}</p>
+                )}
                 <p className="text-muted-foreground text-sm">{profile?.email}</p>
                 <div className="flex items-center gap-2 flex-wrap mt-1">
                   {isAdmin && (
@@ -217,6 +244,15 @@ const Profile = () => {
                 </div>
                 {/* Team Badges */}
                 {user && <TeamBadges userId={user.id} />}
+                {isMember && user && (
+                  <Link
+                    to={`/members/${user.id}`}
+                    className="mt-2 inline-flex items-center gap-1 text-xs text-accent hover:text-accent/80 transition-colors"
+                  >
+                    <ExternalLink className="w-3 h-3" />
+                    Preview public member page
+                  </Link>
+                )}
                 
                 {/* Upload hint */}
                 <button
@@ -249,6 +285,20 @@ const Profile = () => {
               {/* Phone */}
               <div>
                 <label className="flex items-center gap-2 text-sm font-medium text-foreground mb-2">
+                  <Sparkles className="w-4 h-4 text-muted-foreground" />
+                  Headline
+                </label>
+                <input
+                  type="text"
+                  value={formData.headline}
+                  onChange={(e) => setFormData({ ...formData, headline: e.target.value })}
+                  className="w-full px-4 py-3 rounded-xl border border-border bg-background transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-accent/50"
+                  placeholder="Frontend lead, builder, design systems enthusiast"
+                />
+              </div>
+
+              <div>
+                <label className="flex items-center gap-2 text-sm font-medium text-foreground mb-2">
                   <Phone className="w-4 h-4 text-muted-foreground" />
                   Phone Number
                 </label>
@@ -259,6 +309,36 @@ const Profile = () => {
                   className="w-full px-4 py-3 rounded-xl border border-border bg-background transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-accent/50"
                   placeholder="+91 98765 43210"
                 />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="flex items-center gap-2 text-sm font-medium text-foreground mb-2">
+                    <MapPin className="w-4 h-4 text-muted-foreground" />
+                    Location
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.location}
+                    onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                    className="w-full px-4 py-3 rounded-xl border border-border bg-background transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-accent/50"
+                    placeholder="Chennai, India"
+                  />
+                </div>
+
+                <div>
+                  <label className="flex items-center gap-2 text-sm font-medium text-foreground mb-2">
+                    <Globe className="w-4 h-4 text-muted-foreground" />
+                    Website
+                  </label>
+                  <input
+                    type="url"
+                    value={formData.website_url}
+                    onChange={(e) => setFormData({ ...formData, website_url: e.target.value })}
+                    className="w-full px-4 py-3 rounded-xl border border-border bg-background transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-accent/50"
+                    placeholder="https://yourportfolio.com"
+                  />
+                </div>
               </div>
 
               {/* Bio */}
@@ -273,6 +353,64 @@ const Profile = () => {
                   rows={3}
                   className="w-full px-4 py-3 rounded-xl border border-border bg-background transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-accent/50 resize-none"
                   placeholder="Tell us about yourself..."
+                />
+              </div>
+
+              <div>
+                <label className="flex items-center gap-2 text-sm font-medium text-foreground mb-2">
+                  <Sparkles className="w-4 h-4 text-muted-foreground" />
+                  Cover Image URL
+                </label>
+                <input
+                  type="url"
+                  value={formData.cover_image_url}
+                  onChange={(e) => setFormData({ ...formData, cover_image_url: e.target.value })}
+                  className="w-full px-4 py-3 rounded-xl border border-border bg-background transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-accent/50"
+                  placeholder="https://images.example.com/cover.jpg"
+                />
+              </div>
+
+              <div>
+                <label className="flex items-center gap-2 text-sm font-medium text-foreground mb-2">
+                  <Sparkles className="w-4 h-4 text-muted-foreground" />
+                  Specialties
+                </label>
+                <textarea
+                  value={formData.specialties}
+                  onChange={(e) => setFormData({ ...formData, specialties: e.target.value })}
+                  rows={3}
+                  className="w-full px-4 py-3 rounded-xl border border-border bg-background transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-accent/50 resize-none"
+                  placeholder={'React\nUI Systems\nMachine Learning'}
+                />
+                <p className="text-xs text-muted-foreground mt-1">One specialty per line.</p>
+              </div>
+
+              <div>
+                <label className="flex items-center gap-2 text-sm font-medium text-foreground mb-2">
+                  <Sparkles className="w-4 h-4 text-muted-foreground" />
+                  Achievements / Highlights
+                </label>
+                <textarea
+                  value={formData.achievements}
+                  onChange={(e) => setFormData({ ...formData, achievements: e.target.value })}
+                  rows={4}
+                  className="w-full px-4 py-3 rounded-xl border border-border bg-background transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-accent/50 resize-none"
+                  placeholder={'Led the web team for HackFest\nBuilt the society website\nWon 2 internal hackathons'}
+                />
+                <p className="text-xs text-muted-foreground mt-1">One highlight per line.</p>
+              </div>
+
+              <div>
+                <label className="flex items-center gap-2 text-sm font-medium text-foreground mb-2">
+                  <Sparkles className="w-4 h-4 text-muted-foreground" />
+                  Favorite Quote
+                </label>
+                <textarea
+                  value={formData.favorite_quote}
+                  onChange={(e) => setFormData({ ...formData, favorite_quote: e.target.value })}
+                  rows={2}
+                  className="w-full px-4 py-3 rounded-xl border border-border bg-background transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-accent/50 resize-none"
+                  placeholder="A short quote or line that represents you"
                 />
               </div>
 

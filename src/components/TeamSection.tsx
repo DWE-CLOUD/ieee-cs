@@ -12,6 +12,7 @@ interface TeamMember {
   profiles: {
     display_name: string | null;
     avatar_url: string | null;
+    headline?: string | null;
     linkedin_url: string | null;
     github_url: string | null;
   };
@@ -411,13 +412,21 @@ const TeamSection = () => {
                                 ${isHovered ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-4 scale-95'}
                               `}
                             >
-                              <div className="flex items-center gap-2">
-                                <div className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
-                                <p className="text-xs md:text-sm font-semibold text-foreground whitespace-nowrap">
-                                  {teamHead.profiles.display_name}
+                              <Link
+                                to={`/members/${teamHead.user_id}`}
+                                onClick={(e) => e.stopPropagation()}
+                                className="block"
+                              >
+                                <div className="flex items-center gap-2">
+                                  <div className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
+                                  <p className="text-xs md:text-sm font-semibold text-foreground whitespace-nowrap hover:text-accent transition-colors">
+                                    {teamHead.profiles.display_name}
+                                  </p>
+                                </div>
+                                <p className="text-[10px] md:text-xs text-accent font-medium text-center mt-0.5">
+                                  Team Head • View About
                                 </p>
-                              </div>
-                              <p className="text-[10px] md:text-xs text-accent font-medium text-center mt-0.5">Team Head</p>
+                              </Link>
                             </div>
                           </>
                         );
@@ -661,7 +670,13 @@ const TeamSection = () => {
                                   Team Head
                                 </span>
                               </div>
-                              <p className="text-sm font-medium text-foreground mt-1">{teamHead.profiles.display_name}</p>
+                              <Link
+                                to={`/members/${teamHead.user_id}`}
+                                onClick={(e) => e.stopPropagation()}
+                                className="text-sm font-medium text-foreground mt-1 hover:text-accent transition-colors inline-block"
+                              >
+                                {teamHead.profiles.display_name}
+                              </Link>
                             </div>
                           </div>
                         ) : (
@@ -753,7 +768,11 @@ const TeamSection = () => {
                               transition: `all 0.4s ease-out ${0.4 + idx * 0.08}s`,
                             }}
                           >
-                            <div className="w-14 h-14 rounded-full overflow-hidden bg-muted flex-shrink-0 ring-2 ring-background flex items-center justify-center">
+                            <Link
+                              to={`/members/${member.user_id}`}
+                              onClick={(e) => e.stopPropagation()}
+                              className="w-14 h-14 rounded-full overflow-hidden bg-muted flex-shrink-0 ring-2 ring-background flex items-center justify-center"
+                            >
                               {member.profiles.avatar_url ? (
                                 <img 
                                   src={member.profiles.avatar_url} 
@@ -765,12 +784,16 @@ const TeamSection = () => {
                                   {(member.profiles.display_name || 'U')[0].toUpperCase()}
                                 </span>
                               )}
-                            </div>
+                            </Link>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2">
-                                <p className="font-medium text-foreground truncate">
+                                <Link
+                                  to={`/members/${member.user_id}`}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="font-medium text-foreground truncate hover:text-accent transition-colors"
+                                >
                                   {member.profiles.display_name || 'Team Member'}
-                                </p>
+                                </Link>
                                 {member.is_head && (
                                   <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-accent/15 text-accent text-[10px] font-semibold rounded-full flex-shrink-0">
                                     <Crown className="w-3 h-3" />
@@ -779,6 +802,11 @@ const TeamSection = () => {
                                 )}
                               </div>
                               <p className="text-sm text-muted-foreground truncate">{member.position_title}</p>
+                              {member.profiles.headline && (
+                                <p className="text-xs text-muted-foreground/80 truncate mt-1">
+                                  {member.profiles.headline}
+                                </p>
+                              )}
                             </div>
                             {(member.profiles.linkedin_url || member.profiles.github_url) && (
                               <div className="flex items-center gap-1">

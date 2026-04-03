@@ -598,10 +598,17 @@ router.patch('/team-members/:id', requireAuth, async (req, res) => {
       return;
     }
 
-    await query('UPDATE team_members SET is_head = $2 WHERE id = $1', [
-      req.params.id,
-      Boolean(req.body.is_head),
-    ]);
+    const nextIsHead = Boolean(req.body.is_head);
+    await withTransaction(async (client) => {
+      if (nextIsHead) {
+        await client.query('UPDATE team_members SET is_head = false WHERE team_id = $1', [member.team_id]);
+      }
+
+      await client.query('UPDATE team_members SET is_head = $2 WHERE id = $1', [
+        req.params.id,
+        nextIsHead,
+      ]);
+    });
     res.json({ ok: true });
   } catch (error) {
     sendError(res, error);

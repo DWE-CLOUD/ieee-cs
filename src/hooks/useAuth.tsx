@@ -17,6 +17,13 @@ interface Profile {
   phone: string | null;
   bio: string | null;
   avatar_url: string | null;
+  headline: string | null;
+  location: string | null;
+  website_url: string | null;
+  cover_image_url: string | null;
+  specialties: string[];
+  achievements: string[];
+  favorite_quote: string | null;
   linkedin_url: string | null;
   github_url: string | null;
   twitter_url: string | null;
