@@ -31,6 +31,12 @@ export const config = {
   smtpUser: process.env.SMTP_USER || '',
   smtpPass: process.env.SMTP_PASS || '',
   mailFrom: process.env.MAIL_FROM || process.env.SMTP_USER || '',
+  resendApiKey: process.env.RESEND_API_KEY || '',
+  gmailClientId: process.env.GMAIL_CLIENT_ID || '',
+  gmailClientSecret: process.env.GMAIL_CLIENT_SECRET || '',
+  gmailRefreshToken: process.env.GMAIL_REFRESH_TOKEN || '',
+  gmailRedirectUri:
+    process.env.GMAIL_REDIRECT_URI || 'https://developers.google.com/oauthplayground',
   passwordResetPath: process.env.PASSWORD_RESET_PATH || '/reset-password',
   magicLoginPath: process.env.MAGIC_LOGIN_PATH || '/magic-login',
 };

@@ -81,6 +81,7 @@ ADMIN_EMAILS=your-email@example.com
 PUBLIC_APP_URL=https://your-service.up.railway.app
 ALLOWED_ORIGINS=https://your-service.up.railway.app
 APP_NAME=IEEE Computer Society
+RESEND_API_KEY=<resend-api-key>
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
 SMTP_SECURE=false
@@ -88,6 +89,10 @@ SMTP_FAMILY=4
 SMTP_USER=your-email@gmail.com
 SMTP_PASS=your-gmail-app-password
 MAIL_FROM=your-email@gmail.com
+GMAIL_CLIENT_ID=<google-oauth-client-id>
+GMAIL_CLIENT_SECRET=<google-oauth-client-secret>
+GMAIL_REFRESH_TOKEN=<google-oauth-refresh-token>
+GMAIL_REDIRECT_URI=https://developers.google.com/oauthplayground
 ```
 
 Notes:
@@ -97,8 +102,9 @@ Notes:
 - `ADMIN_EMAILS`: comma-separated if you want more than one admin email
 - `PUBLIC_APP_URL`: use your Railway public URL first, then replace it later with your custom domain if needed
 - `ALLOWED_ORIGINS`: should match the frontend URL that will open the app in the browser
-- `SMTP_*` and `MAIL_FROM`: required for welcome emails, forgot-password emails, and magic login emails
+- `RESEND_API_KEY` with `MAIL_FROM`: recommended on Railway Hobby for welcome emails, forgot-password emails, and magic login emails
 - for Gmail on Railway, use `SMTP_PORT=587` and `SMTP_SECURE=false` first; it is typically more reliable than implicit TLS on `465`
+- on Railway Hobby, Gmail SMTP still times out because outbound SMTP is blocked; use Gmail API credentials instead
 
 Optional:
 
@@ -188,6 +194,7 @@ ADMIN_EMAILS=you@example.com
 PUBLIC_APP_URL=http://localhost:3000
 ALLOWED_ORIGINS=http://localhost:8080
 APP_NAME=IEEE Computer Society
+RESEND_API_KEY=
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
 SMTP_SECURE=false
@@ -195,6 +202,10 @@ SMTP_FAMILY=4
 SMTP_USER=your-email@gmail.com
 SMTP_PASS=your-gmail-app-password
 MAIL_FROM=your-email@gmail.com
+GMAIL_CLIENT_ID=
+GMAIL_CLIENT_SECRET=
+GMAIL_REFRESH_TOKEN=
+GMAIL_REDIRECT_URI=https://developers.google.com/oauthplayground
 ```
 
 ### Step 3: Start the backend
@@ -247,8 +258,8 @@ This app now supports:
 Required for those features:
 
 1. set `PUBLIC_APP_URL` correctly
-2. set Gmail SMTP variables in Railway
-3. use a Gmail app password, not your normal Gmail password
+2. on Railway Hobby, either set `RESEND_API_KEY` or use Gmail API OAuth variables in Railway
+3. if you later move to a plan that allows SMTP, SMTP is still supported as fallback
 
 Frontend routes used by email links:
 
