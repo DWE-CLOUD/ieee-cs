@@ -15,6 +15,7 @@ import {
 import { Link, useParams } from 'react-router-dom';
 import { api } from '@/lib/api';
 import ieeeLogo from '@/assets/ieee-cs-logo.png';
+import { normalizeExternalUrl } from '@/lib/urls';
 
 interface TeamMembership {
   id: string;
@@ -134,6 +135,11 @@ const MemberProfile = () => {
   const connectTitle = profile.connect_title || 'Connect';
   const introLabel = profile.profile_intro_label || 'IEEE CS Member Profile';
   const focusTitle = profile.focus_title || 'Current Focus';
+  const websiteUrl = normalizeExternalUrl(profile.website_url);
+  const linkedinUrl = normalizeExternalUrl(profile.linkedin_url);
+  const githubUrl = normalizeExternalUrl(profile.github_url);
+  const twitterUrl = normalizeExternalUrl(profile.twitter_url);
+  const ctaUrl = normalizeExternalUrl(profile.cta_url);
 
   return (
     <div
@@ -240,10 +246,10 @@ const MemberProfile = () => {
                 ))}
               </div>
 
-              {profile.cta_label && profile.cta_url ? (
+              {profile.cta_label && ctaUrl ? (
                 <div className="mt-8">
                   <a
-                    href={profile.cta_url}
+                    href={ctaUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-2 px-5 py-3 rounded-full font-medium transition-transform hover:translate-x-0.5"
@@ -413,9 +419,9 @@ const MemberProfile = () => {
             <div className="rounded-[24px] md:rounded-[32px] border border-border/50 bg-card p-5 md:p-8 shadow-soft">
               <h2 className="font-serif text-2xl md:text-3xl text-foreground mb-5 md:mb-6">{connectTitle}</h2>
               <div className="space-y-3">
-                {profile.website_url ? (
+                {websiteUrl ? (
                   <a
-                    href={profile.website_url}
+                    href={websiteUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center justify-between gap-3 rounded-2xl border border-border/40 px-4 py-4 hover:bg-muted/50 transition-colors"
@@ -427,9 +433,9 @@ const MemberProfile = () => {
                     <ArrowUpRight className="w-4 h-4 text-muted-foreground" />
                   </a>
                 ) : null}
-                {profile.linkedin_url ? (
+                {linkedinUrl ? (
                   <a
-                    href={profile.linkedin_url}
+                    href={linkedinUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center justify-between gap-3 rounded-2xl border border-border/40 px-4 py-4 hover:bg-muted/50 transition-colors"
@@ -441,9 +447,9 @@ const MemberProfile = () => {
                     <ArrowUpRight className="w-4 h-4 text-muted-foreground" />
                   </a>
                 ) : null}
-                {profile.github_url ? (
+                {githubUrl ? (
                   <a
-                    href={profile.github_url}
+                    href={githubUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center justify-between gap-3 rounded-2xl border border-border/40 px-4 py-4 hover:bg-muted/50 transition-colors"
@@ -455,9 +461,9 @@ const MemberProfile = () => {
                     <ArrowUpRight className="w-4 h-4 text-muted-foreground" />
                   </a>
                 ) : null}
-                {profile.twitter_url ? (
+                {twitterUrl ? (
                   <a
-                    href={profile.twitter_url}
+                    href={twitterUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center justify-between gap-3 rounded-2xl border border-border/40 px-4 py-4 hover:bg-muted/50 transition-colors"
@@ -469,7 +475,7 @@ const MemberProfile = () => {
                     <ArrowUpRight className="w-4 h-4 text-muted-foreground" />
                   </a>
                 ) : null}
-                {!profile.website_url && !profile.linkedin_url && !profile.github_url && !profile.twitter_url ? (
+                {!websiteUrl && !linkedinUrl && !githubUrl && !twitterUrl ? (
                   <p className="text-muted-foreground">No public links added yet.</p>
                 ) : null}
               </div>

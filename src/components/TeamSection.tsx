@@ -5,6 +5,7 @@ import { api } from "@/lib/api";
 import { useHomeContent } from "@/components/home/HomeContentProvider";
 import { getMemberProfilePath } from "@/lib/members";
 import LazyImage from "@/components/LazyImage";
+import { normalizeExternalUrl } from "@/lib/urls";
 
 interface TeamMember {
   id: string;
@@ -755,11 +756,11 @@ const TeamSection = () => {
                                 </p>
                               )}
                             </div>
-                            {(member.profiles.linkedin_url || member.profiles.github_url) && (
+                            {(normalizeExternalUrl(member.profiles.linkedin_url) || normalizeExternalUrl(member.profiles.github_url)) && (
                               <div className="flex items-center gap-1">
-                                {member.profiles.linkedin_url && (
+                                {normalizeExternalUrl(member.profiles.linkedin_url) && (
                                   <a 
-                                    href={member.profiles.linkedin_url} 
+                                    href={normalizeExternalUrl(member.profiles.linkedin_url) || undefined} 
                                     target="_blank" 
                                     rel="noopener noreferrer"
                                     className="p-2 rounded-full hover:bg-muted transition-colors"
@@ -768,9 +769,9 @@ const TeamSection = () => {
                                     <Linkedin className="w-4 h-4 text-muted-foreground" />
                                   </a>
                                 )}
-                                {member.profiles.github_url && (
+                                {normalizeExternalUrl(member.profiles.github_url) && (
                                   <a 
-                                    href={member.profiles.github_url} 
+                                    href={normalizeExternalUrl(member.profiles.github_url) || undefined} 
                                     target="_blank" 
                                     rel="noopener noreferrer"
                                     className="p-2 rounded-full hover:bg-muted transition-colors"
