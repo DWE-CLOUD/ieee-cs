@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, User, Phone, FileText, Linkedin, Github, Twitter, Save, Loader2, LogOut, ClipboardList, Camera, Upload, MapPin, Globe, Sparkles, ExternalLink, Palette, Hash, LayoutTemplate, Link as LinkIcon, Mail } from 'lucide-react';
+import { ArrowLeft, User, Phone, FileText, Save, Loader2, LogOut, ClipboardList, Camera, Upload, ExternalLink, Mail, Shield } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import ieeeLogo from '@/assets/ieee-logo.png';
@@ -16,6 +16,7 @@ const Profile = () => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isChangingEmail, setIsChangingEmail] = useState(false);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [isMember, setIsMember] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -51,6 +52,11 @@ const Profile = () => {
   const [emailForm, setEmailForm] = useState({
     email: '',
     password: '',
+  });
+  const [passwordForm, setPasswordForm] = useState({
+    current_password: '',
+    new_password: '',
+    confirm_password: '',
   });
 
   useEffect(() => {
@@ -170,6 +176,29 @@ const Profile = () => {
       toast.error(error instanceof Error ? error.message : 'Failed to update email');
     } finally {
       setIsChangingEmail(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (!user) return;
+
+    if (passwordForm.new_password !== passwordForm.confirm_password) {
+      toast.error('New passwords do not match');
+      return;
+    }
+
+    setIsChangingPassword(true);
+    try {
+      await api.patch('/api/profile/password', {
+        current_password: passwordForm.current_password,
+        new_password: passwordForm.new_password,
+      });
+      toast.success('Password updated');
+      setPasswordForm({ current_password: '', new_password: '', confirm_password: '' });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to update password');
+    } finally {
+      setIsChangingPassword(false);
     }
   };
 
@@ -339,39 +368,6 @@ const Profile = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                 <div>
                   <label className="flex items-center gap-2 text-sm font-medium text-foreground mb-2">
-                    <Sparkles className="w-4 h-4 text-muted-foreground" />
-                    Headline
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.headline}
-                    onChange={(e) => setFormData({ ...formData, headline: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl border border-border bg-background transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-accent/50"
-                    placeholder="Frontend lead, builder, design systems enthusiast"
-                  />
-                </div>
-
-                <div>
-                  <label className="flex items-center gap-2 text-sm font-medium text-foreground mb-2">
-                    <Hash className="w-4 h-4 text-muted-foreground" />
-                    Public Slug
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.public_slug}
-                    onChange={(e) => setFormData({ ...formData, public_slug: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl border border-border bg-background transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-accent/50"
-                    placeholder="your-name"
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Your page will open at `{getMemberProfilePath(formData.public_slug || null, user?.id)}`.
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
-                <div>
-                  <label className="flex items-center gap-2 text-sm font-medium text-foreground mb-2">
                     <Phone className="w-4 h-4 text-muted-foreground" />
                     Phone Number
                   </label>
@@ -386,296 +382,19 @@ const Profile = () => {
 
                 <div>
                   <label className="flex items-center gap-2 text-sm font-medium text-foreground mb-2">
-                    <MapPin className="w-4 h-4 text-muted-foreground" />
-                    Location
+                    <Mail className="w-4 h-4 text-muted-foreground" />
+                    Account Email
                   </label>
                   <input
-                    type="text"
-                    value={formData.location}
-                    onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                    type="email"
+                    value={profile?.email || ''}
+                    readOnly
                     className="w-full px-4 py-3 rounded-xl border border-border bg-background transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-accent/50"
-                    placeholder="Chennai, India"
+                    placeholder="you@example.com"
                   />
-                </div>
-
-                <div>
-                  <label className="flex items-center gap-2 text-sm font-medium text-foreground mb-2">
-                    <Globe className="w-4 h-4 text-muted-foreground" />
-                    Website
-                  </label>
-                  <input
-                    type="url"
-                    value={formData.website_url}
-                    onChange={(e) => setFormData({ ...formData, website_url: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl border border-border bg-background transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-accent/50"
-                    placeholder="https://yourportfolio.com"
-                  />
-                </div>
-              </div>
-
-              {/* Bio */}
-              <div>
-                <label className="flex items-center gap-2 text-sm font-medium text-foreground mb-2">
-                  <FileText className="w-4 h-4 text-muted-foreground" />
-                  Bio
-                </label>
-                <textarea
-                  value={formData.bio}
-                  onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
-                  rows={3}
-                  className="w-full px-4 py-3 rounded-xl border border-border bg-background transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-accent/50 resize-none"
-                  placeholder="Tell us about yourself..."
-                />
-              </div>
-
-              <div className="pt-4 border-t border-border/50 space-y-6">
-                <div className="flex items-center gap-2">
-                  <Palette className="w-4 h-4 text-muted-foreground" />
-                  <h3 className="text-sm font-medium text-foreground">Page Look</h3>
-                </div>
-
-                <div>
-                  <label className="flex items-center gap-2 text-sm font-medium text-foreground mb-2">
-                    <Sparkles className="w-4 h-4 text-muted-foreground" />
-                    Cover Image URL
-                  </label>
-                  <input
-                    type="url"
-                    value={formData.cover_image_url}
-                    onChange={(e) => setFormData({ ...formData, cover_image_url: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl border border-border bg-background transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-accent/50"
-                    placeholder="https://images.example.com/cover.jpg"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
-                  <div>
-                    <label className="block text-sm font-medium text-foreground mb-2">Primary Color</label>
-                    <input
-                      type="color"
-                      value={formData.theme_primary}
-                      onChange={(e) => setFormData({ ...formData, theme_primary: e.target.value })}
-                      className="w-full h-12 rounded-xl border border-border bg-background cursor-pointer"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-foreground mb-2">Secondary Color</label>
-                    <input
-                      type="color"
-                      value={formData.theme_secondary}
-                      onChange={(e) => setFormData({ ...formData, theme_secondary: e.target.value })}
-                      className="w-full h-12 rounded-xl border border-border bg-background cursor-pointer"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-foreground mb-2">Surface Color</label>
-                    <input
-                      type="color"
-                      value={formData.theme_surface}
-                      onChange={(e) => setFormData({ ...formData, theme_surface: e.target.value })}
-                      className="w-full h-12 rounded-xl border border-border bg-background cursor-pointer"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="pt-4 border-t border-border/50 space-y-6">
-                <div className="flex items-center gap-2">
-                  <LayoutTemplate className="w-4 h-4 text-muted-foreground" />
-                  <h3 className="text-sm font-medium text-foreground">Page Copy & Sections</h3>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-                  <div>
-                    <label className="block text-sm font-medium text-foreground mb-2">Hero Label</label>
-                    <input
-                      type="text"
-                      value={formData.profile_intro_label}
-                      onChange={(e) => setFormData({ ...formData, profile_intro_label: e.target.value })}
-                      className="w-full px-4 py-3 rounded-xl border border-border bg-background transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-accent/50"
-                      placeholder="IEEE CS Member Profile"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-foreground mb-2">About Section Title</label>
-                    <input
-                      type="text"
-                      value={formData.about_title}
-                      onChange={(e) => setFormData({ ...formData, about_title: e.target.value })}
-                      className="w-full px-4 py-3 rounded-xl border border-border bg-background transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-accent/50"
-                      placeholder="About"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-foreground mb-2">Specialties Title</label>
-                    <input
-                      type="text"
-                      value={formData.specialties_title}
-                      onChange={(e) => setFormData({ ...formData, specialties_title: e.target.value })}
-                      className="w-full px-4 py-3 rounded-xl border border-border bg-background transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-accent/50"
-                      placeholder="Specialties"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-foreground mb-2">Highlights Title</label>
-                    <input
-                      type="text"
-                      value={formData.highlights_title}
-                      onChange={(e) => setFormData({ ...formData, highlights_title: e.target.value })}
-                      className="w-full px-4 py-3 rounded-xl border border-border bg-background transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-accent/50"
-                      placeholder="Highlights"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-foreground mb-2">Connect Title</label>
-                    <input
-                      type="text"
-                      value={formData.connect_title}
-                      onChange={(e) => setFormData({ ...formData, connect_title: e.target.value })}
-                      className="w-full px-4 py-3 rounded-xl border border-border bg-background transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-accent/50"
-                      placeholder="Connect"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-foreground mb-2">Focus Card Title</label>
-                    <input
-                      type="text"
-                      value={formData.focus_title}
-                      onChange={(e) => setFormData({ ...formData, focus_title: e.target.value })}
-                      className="w-full px-4 py-3 rounded-xl border border-border bg-background transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-accent/50"
-                      placeholder="Currently Building"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">Focus Card Body</label>
-                  <textarea
-                    value={formData.focus_body}
-                    onChange={(e) => setFormData({ ...formData, focus_body: e.target.value })}
-                    rows={3}
-                    className="w-full px-4 py-3 rounded-xl border border-border bg-background transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-accent/50 resize-none"
-                    placeholder="What are you building, exploring, or leading right now?"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-                  <div>
-                    <label className="flex items-center gap-2 text-sm font-medium text-foreground mb-2">
-                      <LinkIcon className="w-4 h-4 text-muted-foreground" />
-                      CTA Label
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.cta_label}
-                      onChange={(e) => setFormData({ ...formData, cta_label: e.target.value })}
-                      className="w-full px-4 py-3 rounded-xl border border-border bg-background transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-accent/50"
-                      placeholder="View Portfolio"
-                    />
-                  </div>
-                  <div>
-                    <label className="flex items-center gap-2 text-sm font-medium text-foreground mb-2">
-                      <Globe className="w-4 h-4 text-muted-foreground" />
-                      CTA URL
-                    </label>
-                    <input
-                      type="url"
-                      value={formData.cta_url}
-                      onChange={(e) => setFormData({ ...formData, cta_url: e.target.value })}
-                      className="w-full px-4 py-3 rounded-xl border border-border bg-background transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-accent/50"
-                      placeholder="https://yourportfolio.com/work"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <label className="flex items-center gap-2 text-sm font-medium text-foreground mb-2">
-                  <Sparkles className="w-4 h-4 text-muted-foreground" />
-                  Specialties
-                </label>
-                <textarea
-                  value={formData.specialties}
-                  onChange={(e) => setFormData({ ...formData, specialties: e.target.value })}
-                  rows={3}
-                  className="w-full px-4 py-3 rounded-xl border border-border bg-background transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-accent/50 resize-none"
-                  placeholder={'React\nUI Systems\nMachine Learning'}
-                />
-                <p className="text-xs text-muted-foreground mt-1">One specialty per line.</p>
-              </div>
-
-              <div>
-                <label className="flex items-center gap-2 text-sm font-medium text-foreground mb-2">
-                  <Sparkles className="w-4 h-4 text-muted-foreground" />
-                  Achievements / Highlights
-                </label>
-                <textarea
-                  value={formData.achievements}
-                  onChange={(e) => setFormData({ ...formData, achievements: e.target.value })}
-                  rows={4}
-                  className="w-full px-4 py-3 rounded-xl border border-border bg-background transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-accent/50 resize-none"
-                  placeholder={'Led the web team for HackFest\nBuilt the society website\nWon 2 internal hackathons'}
-                />
-                <p className="text-xs text-muted-foreground mt-1">One highlight per line.</p>
-              </div>
-
-              <div>
-                <label className="flex items-center gap-2 text-sm font-medium text-foreground mb-2">
-                  <Sparkles className="w-4 h-4 text-muted-foreground" />
-                  Favorite Quote
-                </label>
-                <textarea
-                  value={formData.favorite_quote}
-                  onChange={(e) => setFormData({ ...formData, favorite_quote: e.target.value })}
-                  rows={2}
-                  className="w-full px-4 py-3 rounded-xl border border-border bg-background transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-accent/50 resize-none"
-                  placeholder="A short quote or line that represents you"
-                />
-              </div>
-
-              {/* Social Links */}
-              <div className="pt-4 border-t border-border/50">
-                <h3 className="text-sm font-medium text-foreground mb-4">Social Links</h3>
-                <div className="space-y-4">
-                  <div>
-                    <label className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-                      <Linkedin className="w-4 h-4" />
-                      LinkedIn
-                    </label>
-                    <input
-                      type="url"
-                      value={formData.linkedin_url}
-                      onChange={(e) => setFormData({ ...formData, linkedin_url: e.target.value })}
-                      className="w-full px-4 py-3 rounded-xl border border-border bg-background transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-accent/50"
-                      placeholder="https://linkedin.com/in/yourprofile"
-                    />
-                  </div>
-                  <div>
-                    <label className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-                      <Github className="w-4 h-4" />
-                      GitHub
-                    </label>
-                    <input
-                      type="url"
-                      value={formData.github_url}
-                      onChange={(e) => setFormData({ ...formData, github_url: e.target.value })}
-                      className="w-full px-4 py-3 rounded-xl border border-border bg-background transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-accent/50"
-                      placeholder="https://github.com/yourusername"
-                    />
-                  </div>
-                  <div>
-                    <label className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-                      <Twitter className="w-4 h-4" />
-                      Twitter
-                    </label>
-                    <input
-                      type="url"
-                      value={formData.twitter_url}
-                      onChange={(e) => setFormData({ ...formData, twitter_url: e.target.value })}
-                      className="w-full px-4 py-3 rounded-xl border border-border bg-background transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-accent/50"
-                      placeholder="https://twitter.com/yourhandle"
-                    />
-                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Change your login email in Security below.
+                  </p>
                 </div>
               </div>
             </div>
@@ -706,6 +425,15 @@ const Profile = () => {
           )}
 
           {isMember && (
+            <div className="mb-3 mt-2">
+              <h2 className="font-serif text-2xl text-foreground">Other</h2>
+              <p className="text-sm text-muted-foreground">
+                Open dedicated workspaces for your public details page and resume.
+              </p>
+            </div>
+          )}
+
+          {isMember && (
             <div className="bg-card rounded-2xl md:rounded-3xl border border-border/50 p-5 md:p-8 shadow-elegant mb-6">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-3">
@@ -713,7 +441,7 @@ const Profile = () => {
                     <FileText className="w-5 h-5 text-accent" />
                   </div>
                   <div>
-                    <h2 className="font-medium text-foreground text-lg">Member Page Editor</h2>
+                    <h2 className="font-medium text-foreground text-lg">Details Page Editor</h2>
                     <p className="text-sm text-muted-foreground">
                       Design your public member page with a live preview.
                     </p>
@@ -723,7 +451,7 @@ const Profile = () => {
                   to="/member-editor"
                   className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-foreground text-primary-foreground text-sm font-medium transition-all duration-300 hover:opacity-90"
                 >
-                  Open Page Editor
+                  Open Details Editor
                   <ExternalLink className="w-4 h-4" />
                 </Link>
               </div>
@@ -758,42 +486,97 @@ const Profile = () => {
           <div className="bg-card rounded-2xl md:rounded-3xl border border-border/50 p-5 md:p-8 shadow-elegant mb-6">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center">
-                <Mail className="w-5 h-5 text-accent" />
+                <Shield className="w-5 h-5 text-accent" />
               </div>
               <div>
-                <h2 className="font-medium text-foreground text-lg">Login Email</h2>
-                <p className="text-sm text-muted-foreground">Change the email you use to sign in.</p>
+                <h2 className="font-medium text-foreground text-lg">Security</h2>
+                <p className="text-sm text-muted-foreground">Change your login email and password.</p>
               </div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-4 items-end">
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">New Email</label>
-                <input
-                  type="email"
-                  value={emailForm.email}
-                  onChange={(e) => setEmailForm({ ...emailForm, email: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl border border-border bg-background transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-accent/50"
-                  placeholder="you@example.com"
-                />
+
+            <div className="space-y-6">
+              <div className="rounded-2xl border border-border/50 p-4 md:p-5">
+                <h3 className="text-sm font-medium text-foreground mb-4">Login Email</h3>
+                <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-4 items-end">
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-2">New Email</label>
+                    <input
+                      type="email"
+                      value={emailForm.email}
+                      onChange={(e) => setEmailForm({ ...emailForm, email: e.target.value })}
+                      className="w-full px-4 py-3 rounded-xl border border-border bg-background transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-accent/50"
+                      placeholder="you@example.com"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-2">Current Password</label>
+                    <input
+                      type="password"
+                      value={emailForm.password}
+                      onChange={(e) => setEmailForm({ ...emailForm, password: e.target.value })}
+                      className="w-full px-4 py-3 rounded-xl border border-border bg-background transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-accent/50"
+                      placeholder="Confirm password"
+                    />
+                  </div>
+                  <button
+                    onClick={handleChangeEmail}
+                    disabled={isChangingEmail || !emailForm.email || !emailForm.password}
+                    className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-foreground text-primary-foreground text-sm font-medium transition-all duration-300 hover:opacity-90 disabled:opacity-50"
+                  >
+                    {isChangingEmail ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
+                    Update Email
+                  </button>
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Current Password</label>
-                <input
-                  type="password"
-                  value={emailForm.password}
-                  onChange={(e) => setEmailForm({ ...emailForm, password: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl border border-border bg-background transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-accent/50"
-                  placeholder="Confirm password"
-                />
+
+              <div className="rounded-2xl border border-border/50 p-4 md:p-5">
+                <h3 className="text-sm font-medium text-foreground mb-4">Password</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-2">Current Password</label>
+                    <input
+                      type="password"
+                      value={passwordForm.current_password}
+                      onChange={(e) => setPasswordForm({ ...passwordForm, current_password: e.target.value })}
+                      className="w-full px-4 py-3 rounded-xl border border-border bg-background transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-accent/50"
+                      placeholder="Current password"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-2">New Password</label>
+                    <input
+                      type="password"
+                      value={passwordForm.new_password}
+                      onChange={(e) => setPasswordForm({ ...passwordForm, new_password: e.target.value })}
+                      className="w-full px-4 py-3 rounded-xl border border-border bg-background transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-accent/50"
+                      placeholder="At least 6 characters"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-2">Confirm Password</label>
+                    <input
+                      type="password"
+                      value={passwordForm.confirm_password}
+                      onChange={(e) => setPasswordForm({ ...passwordForm, confirm_password: e.target.value })}
+                      className="w-full px-4 py-3 rounded-xl border border-border bg-background transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-accent/50"
+                      placeholder="Repeat new password"
+                    />
+                  </div>
+                </div>
+                <button
+                  onClick={handleChangePassword}
+                  disabled={
+                    isChangingPassword ||
+                    !passwordForm.current_password ||
+                    !passwordForm.new_password ||
+                    !passwordForm.confirm_password
+                  }
+                  className="mt-4 inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl border border-border text-sm font-medium text-foreground transition-all duration-300 hover:bg-muted disabled:opacity-50"
+                >
+                  {isChangingPassword ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                  Update Password
+                </button>
               </div>
-              <button
-                onClick={handleChangeEmail}
-                disabled={isChangingEmail || !emailForm.email || !emailForm.password}
-                className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-foreground text-primary-foreground text-sm font-medium transition-all duration-300 hover:opacity-90 disabled:opacity-50"
-              >
-                {isChangingEmail ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                Update Email
-              </button>
             </div>
           </div>
 

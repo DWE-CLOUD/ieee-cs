@@ -693,6 +693,42 @@ router.patch('/profile/email', requireAuth, async (req, res) => {
   }
 });
 
+router.patch('/profile/password', requireAuth, async (req, res) => {
+  const { current_password, new_password } = req.body || {};
+
+  if (!current_password || !new_password) {
+    res.status(400).json({ error: 'Current password and new password are required' });
+    return;
+  }
+
+  if (String(new_password).length < 6) {
+    res.status(400).json({ error: 'New password must be at least 6 characters' });
+    return;
+  }
+
+  try {
+    const { rows } = await query('SELECT id, password_hash FROM users WHERE id = $1', [
+      req.viewer.user.id,
+    ]);
+    const user = rows[0];
+
+    if (!user || !(await verifyPassword(current_password, user.password_hash))) {
+      res.status(401).json({ error: 'Current password is incorrect' });
+      return;
+    }
+
+    const passwordHash = await hashPassword(new_password);
+    await query('UPDATE users SET password_hash = $2, updated_at = now() WHERE id = $1', [
+      req.viewer.user.id,
+      passwordHash,
+    ]);
+
+    res.json({ ok: true });
+  } catch (error) {
+    sendError(res, error);
+  }
+});
+
 router.get('/member-profiles/:identifier', async (req, res) => {
   try {
     const { rows: profileRows } = await query(
