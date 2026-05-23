@@ -13,6 +13,7 @@ import {
 } from './app-lib.js';
 import publicRoutes from './routes/public.js';
 import adminRoutes from './routes/admin.js';
+import { recordErrorLog, recordRequestLog } from './diagnostics.js';
 
 const app = express();
 
@@ -67,6 +68,33 @@ app.use(
 app.use(cookieParser());
 app.use(express.json({ limit: '10mb' }));
 app.use(authMiddleware);
+app.use((req, res, next) => {
+  const start = Date.now();
+
+  res.on('finish', () => {
+    const durationMs = Date.now() - start;
+    const isAsset = req.path.startsWith('/uploads') || /\.[a-z0-9]+$/i.test(req.path);
+
+    if (!isAsset) {
+      const entry = {
+        method: req.method,
+        path: req.path,
+        status: res.statusCode,
+        duration_ms: durationMs,
+        user_id: req.viewer?.user?.id || null,
+        ip: req.ip,
+      };
+
+      recordRequestLog(entry);
+
+      if (res.statusCode >= 500) {
+        recordErrorLog(new Error(res.statusMessage || 'Server error'), entry);
+      }
+    }
+  });
+
+  next();
+});
 app.use(
   '/uploads',
   express.static(publicUploadsDir, {

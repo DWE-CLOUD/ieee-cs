@@ -110,6 +110,32 @@ router.get('/health', (_req, res) => {
   res.json({ ok: true });
 });
 
+router.post('/visits', async (req, res) => {
+  const pathValue = String(req.body?.path || '/').slice(0, 500);
+  const title = req.body?.title ? String(req.body.title).slice(0, 200) : null;
+  const referrer = req.body?.referrer ? String(req.body.referrer).slice(0, 500) : null;
+
+  try {
+    await query(
+      `
+        INSERT INTO site_visits (path, title, referrer, user_agent, ip, user_id)
+        VALUES ($1, $2, $3, $4, $5, $6)
+      `,
+      [
+        pathValue || '/',
+        title,
+        referrer,
+        req.get('user-agent') || null,
+        req.ip || null,
+        req.viewer?.user?.id || null,
+      ]
+    );
+    res.status(204).end();
+  } catch (error) {
+    sendError(res, error);
+  }
+});
+
 router.get('/site-content/home', async (_req, res) => {
   try {
     const { rows } = await query('SELECT content FROM site_content WHERE key = $1', ['home']);

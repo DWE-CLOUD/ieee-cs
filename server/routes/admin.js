@@ -1,6 +1,7 @@
 import path from 'node:path';
 import express from 'express';
 import { query, withTransaction } from '../db.js';
+import { getDiagnosticsSnapshot } from '../diagnostics.js';
 import {
   buildApplicationsForViewer,
   canManageTeam,
@@ -65,6 +66,114 @@ router.get('/dashboard', requireAuth, async (req, res) => {
           }))
         : [],
       events,
+    });
+  } catch (error) {
+    sendError(res, error);
+  }
+});
+
+router.get('/system/stats', requireAdmin, async (_req, res) => {
+  try {
+    const diagnostics = getDiagnosticsSnapshot();
+    const [
+      countsResult,
+      databaseResult,
+      visitSummaryResult,
+      topPathsResult,
+      dailyVisitsResult,
+      recentVisitsResult,
+    ] = await Promise.all([
+      query(
+        `
+          SELECT
+            (SELECT COUNT(*) FROM users)::int AS users,
+            (SELECT COUNT(*) FROM profiles)::int AS profiles,
+            (SELECT COUNT(*) FROM user_roles)::int AS roles,
+            (SELECT COUNT(*) FROM teams)::int AS teams,
+            (SELECT COUNT(*) FROM team_members)::int AS team_members,
+            (SELECT COUNT(*) FROM positions)::int AS positions,
+            (SELECT COUNT(*) FROM applications)::int AS applications,
+            (SELECT COUNT(*) FROM events)::int AS events,
+            (SELECT COUNT(*) FROM gallery_albums)::int AS gallery_albums,
+            (SELECT COUNT(*) FROM gallery_images)::int AS gallery_images
+        `
+      ),
+      query(
+        `
+          SELECT
+            current_database() AS name,
+            version() AS version,
+            pg_database_size(current_database())::bigint AS size_bytes,
+            pg_size_pretty(pg_database_size(current_database())) AS size_pretty
+        `
+      ),
+      query(
+        `
+          SELECT
+            COUNT(*)::int AS total,
+            COUNT(*) FILTER (WHERE created_at >= now() - interval '24 hours')::int AS last_24h,
+            COUNT(*) FILTER (WHERE created_at >= now() - interval '7 days')::int AS last_7d,
+            COUNT(*) FILTER (WHERE user_id IS NOT NULL)::int AS authenticated
+          FROM site_visits
+        `
+      ),
+      query(
+        `
+          SELECT path, COUNT(*)::int AS visits, MAX(created_at) AS last_seen
+          FROM site_visits
+          GROUP BY path
+          ORDER BY visits DESC, last_seen DESC
+          LIMIT 10
+        `
+      ),
+      query(
+        `
+          SELECT
+            to_char(day, 'YYYY-MM-DD') AS date,
+            COALESCE(COUNT(sv.id), 0)::int AS visits
+          FROM generate_series(
+            current_date - interval '13 days',
+            current_date,
+            interval '1 day'
+          ) AS days(day)
+          LEFT JOIN site_visits sv
+            ON sv.created_at >= day
+           AND sv.created_at < day + interval '1 day'
+          GROUP BY day
+          ORDER BY day ASC
+        `
+      ),
+      query(
+        `
+          SELECT
+            sv.id,
+            sv.path,
+            sv.title,
+            sv.referrer,
+            sv.user_agent,
+            sv.ip,
+            sv.created_at,
+            p.display_name,
+            u.email
+          FROM site_visits sv
+          LEFT JOIN users u ON u.id = sv.user_id
+          LEFT JOIN profiles p ON p.user_id = sv.user_id
+          ORDER BY sv.created_at DESC
+          LIMIT 30
+        `
+      ),
+    ]);
+
+    res.json({
+      diagnostics,
+      counts: countsResult.rows[0],
+      database: databaseResult.rows[0],
+      visits: {
+        summary: visitSummaryResult.rows[0],
+        top_paths: topPathsResult.rows,
+        daily: dailyVisitsResult.rows,
+        recent: recentVisitsResult.rows,
+      },
     });
   } catch (error) {
     sendError(res, error);

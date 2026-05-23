@@ -191,6 +191,17 @@ CREATE TABLE IF NOT EXISTS site_content (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+CREATE TABLE IF NOT EXISTS site_visits (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  path TEXT NOT NULL,
+  title TEXT,
+  referrer TEXT,
+  user_agent TEXT,
+  ip TEXT,
+  user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS auth_tokens (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -213,6 +224,9 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_profiles_public_slug_unique ON profiles (l
 CREATE INDEX IF NOT EXISTS idx_gallery_images_album_id ON gallery_images(album_id);
 CREATE INDEX IF NOT EXISTS idx_auth_tokens_user_id ON auth_tokens(user_id);
 CREATE INDEX IF NOT EXISTS idx_auth_tokens_purpose ON auth_tokens(purpose);
+CREATE INDEX IF NOT EXISTS idx_site_visits_created_at ON site_visits(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_site_visits_path ON site_visits(path);
+CREATE INDEX IF NOT EXISTS idx_site_visits_user_id ON site_visits(user_id);
 
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$

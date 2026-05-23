@@ -19,6 +19,7 @@ import Gallery from "./pages/Gallery";
 import Events from "./pages/Events";
 import MemberProfile from "./pages/MemberProfile";
 import NotFound from "./pages/NotFound";
+import SiteVisitTracker from "./components/SiteVisitTracker";
 
 const queryClient = new QueryClient();
 
@@ -29,6 +30,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
+          <SiteVisitTracker />
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/install" element={<Install />} />

@@ -6,6 +6,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { config, isProduction } from './config.js';
 import { query } from './db.js';
+import { recordErrorLog } from './diagnostics.js';
 
 export const distDir = path.join(process.cwd(), 'dist');
 export const publicUploadsDir = path.join(config.uploadsDir, 'public');
@@ -301,6 +302,7 @@ export const buildApplicationsForViewer = async (viewer) => {
 
 export const sendError = (res, error) => {
   const message = error instanceof Error ? error.message : 'Unexpected server error';
+  recordErrorLog(error);
   res.status(500).json({ error: message });
 };
 

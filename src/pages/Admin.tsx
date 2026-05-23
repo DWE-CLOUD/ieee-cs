@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { 
   ArrowLeft, Briefcase, Users, UserCheck, FileText, Plus, Edit2, Trash2, 
   Loader2, Check, X, ChevronDown, Eye, Clock, Mail, Phone, Download, Settings, Shield,
-  CalendarDays, MapPin, Link as LinkIcon, Image, Star, Award, Search
+  CalendarDays, MapPin, Link as LinkIcon, Image, Star, Award, Search, Activity
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
@@ -14,10 +14,11 @@ import ManagerAssignment from '@/components/admin/ManagerAssignment';
 import TeamMembersManager from '@/components/admin/TeamMembersManager';
 import GalleryManager from '@/components/admin/GalleryManager';
 import LandingContentManager from '@/components/admin/LandingContentManager';
+import SystemStatsPanel from '@/components/admin/SystemStatsPanel';
 import { format } from 'date-fns';
 import { api } from '@/lib/api';
 
-type TabType = 'positions' | 'teams' | 'applications' | 'users' | 'events' | 'members' | 'gallery' | 'landing';
+type TabType = 'positions' | 'teams' | 'applications' | 'users' | 'events' | 'members' | 'gallery' | 'landing' | 'system';
 
 interface Event {
   id: string;
@@ -252,6 +253,7 @@ const Admin = () => {
     { id: 'landing' as TabType, label: 'Landing', icon: Settings, count: null },
     { id: 'applications' as TabType, label: 'Applications', icon: FileText, count: applications.filter(a => a.status === 'pending').length },
     { id: 'users' as TabType, label: 'Users', icon: UserCheck, count: users.length },
+    { id: 'system' as TabType, label: 'System', icon: Activity, count: null },
   ].filter((tab) => isAdmin || ['members', 'applications'].includes(tab.id));
 
   const filteredUsers = users.filter((u) => {
@@ -446,6 +448,8 @@ const Admin = () => {
 
                 {activeTab === 'landing' && <LandingContentManager />}
 
+                {activeTab === 'system' && <SystemStatsPanel />}
+
                 {/* Events Tab */}
                 {activeTab === 'events' && (
                   <div>
@@ -617,19 +621,64 @@ const Admin = () => {
                         />
                       </label>
                     </div>
-                    <div className="divide-y divide-border/50">
+                    <div>
+                      <div className="hidden grid-cols-[minmax(220px,1.3fr)_170px_220px_260px] gap-4 border-b border-border/50 bg-muted/30 px-6 py-3 text-xs font-medium uppercase tracking-wide text-muted-foreground lg:grid">
+                        <div>User</div>
+                        <div>Duplicated</div>
+                        <div>Roles</div>
+                        <div className="text-right">Actions</div>
+                      </div>
                       {filteredUsers.map((u) => {
                         const userIsAdmin = u.roles.some(r => r.role === 'admin');
                         const userIsManager = u.roles.some(r => r.role === 'manager');
                         const isCurrentUser = u.user_id === user?.id;
                         const nameKey = (u.display_name || '').trim().toLowerCase();
-                        const isDuplicateName = Boolean(nameKey && duplicateNameCounts[nameKey] > 1);
+                        const duplicateCount = nameKey ? duplicateNameCounts[nameKey] || 0 : 0;
+                        const isDuplicateName = duplicateCount > 1;
                         
                         return (
-                          <div key={u.id} className="flex items-center justify-between p-6 hover:bg-muted/30 transition-colors">
-                            <div>
+                          <div key={u.id} className="grid gap-4 border-b border-border/50 p-6 transition-colors last:border-0 hover:bg-muted/30 lg:grid-cols-[minmax(220px,1.3fr)_170px_220px_260px] lg:items-center">
+                            <div className="min-w-0">
                               <div className="flex items-center gap-3 mb-1">
-                                <h3 className="font-medium text-foreground">{u.display_name || 'Unknown'}</h3>
+                                <h3 className="min-w-0 truncate font-medium text-foreground">{u.display_name || 'Unknown'}</h3>
+                                {isCurrentUser && (
+                                  <span className="shrink-0 px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground">
+                                    You
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-sm text-muted-foreground">{u.email}</p>
+                              <p className="mt-1 truncate text-xs text-muted-foreground">{u.user_id}</p>
+                            </div>
+
+                            <div>
+                              <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground lg:hidden">Duplicated</p>
+                              {isDuplicateName ? (
+                                <div className="space-y-2">
+                                  <span className="inline-flex items-center rounded-full bg-destructive/10 px-2.5 py-1 text-xs font-medium text-destructive">
+                                    {duplicateCount} with same name
+                                  </span>
+                                  {!isCurrentUser ? (
+                                    <button
+                                      onClick={() => handleDeleteUser(u.user_id, u.display_name || u.email || 'this duplicate user')}
+                                      className="block text-xs font-medium text-destructive hover:underline"
+                                    >
+                                      Remove this duplicate
+                                    </button>
+                                  ) : (
+                                    <p className="text-xs text-muted-foreground">Current account</p>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="inline-flex items-center rounded-full bg-green-500/10 px-2.5 py-1 text-xs font-medium text-green-600">
+                                  Unique
+                                </span>
+                              )}
+                            </div>
+
+                            <div>
+                              <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground lg:hidden">Roles</p>
+                              <div className="flex flex-wrap gap-2">
                                 {userIsAdmin && (
                                   <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-accent/15 text-accent">
                                     Admin
@@ -641,49 +690,46 @@ const Admin = () => {
                                     Manager
                                   </span>
                                 )}
-                                {isDuplicateName && (
-                                  <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-destructive/10 text-destructive">
-                                    Duplicate name
+                                {!userIsAdmin && !userIsManager && (
+                                  <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground">
+                                    Member
                                   </span>
                                 )}
                               </div>
-                              <p className="text-sm text-muted-foreground">{u.email}</p>
-                              {isDuplicateName && (
-                                <p className="text-xs text-destructive mt-1">
-                                  {duplicateNameCounts[nameKey]} users have this display name.
-                                </p>
+                            </div>
+
+                            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap lg:justify-end">
+                              {!isCurrentUser ? (
+                                <>
+                                  {!userIsAdmin && (
+                                    <ManagerAssignment
+                                      userId={u.user_id}
+                                      userName={u.display_name || u.email || 'User'}
+                                      teams={teams}
+                                      onUpdate={fetchData}
+                                    />
+                                  )}
+                                  <button
+                                    onClick={() => handleToggleAdmin(u.user_id, userIsAdmin)}
+                                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                                      userIsAdmin 
+                                        ? 'bg-destructive/10 text-destructive hover:bg-destructive/20' 
+                                        : 'bg-accent/10 text-accent hover:bg-accent/20'
+                                    }`}
+                                  >
+                                    {userIsAdmin ? 'Remove Admin' : 'Make Admin'}
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteUser(u.user_id, u.display_name || u.email || 'this user')}
+                                    className="px-4 py-2 rounded-lg text-sm font-medium bg-destructive/10 text-destructive hover:bg-destructive/20 transition-all"
+                                  >
+                                    Delete
+                                  </button>
+                                </>
+                              ) : (
+                                <span className="text-sm text-muted-foreground lg:text-right">Current admin account</span>
                               )}
                             </div>
-                            {!isCurrentUser && (
-                              <div className="flex items-center gap-2">
-                                {/* Manager Assignment */}
-                                {!userIsAdmin && (
-                                  <ManagerAssignment
-                                    userId={u.user_id}
-                                    userName={u.display_name || u.email || 'User'}
-                                    teams={teams}
-                                    onUpdate={fetchData}
-                                  />
-                                )}
-                                {/* Admin Toggle */}
-                                <button
-                                  onClick={() => handleToggleAdmin(u.user_id, userIsAdmin)}
-                                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                                    userIsAdmin 
-                                      ? 'bg-destructive/10 text-destructive hover:bg-destructive/20' 
-                                      : 'bg-accent/10 text-accent hover:bg-accent/20'
-                                  }`}
-                                >
-                                  {userIsAdmin ? 'Remove Admin' : 'Make Admin'}
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteUser(u.user_id, u.display_name || u.email || 'this user')}
-                                  className="px-4 py-2 rounded-lg text-sm font-medium bg-destructive/10 text-destructive hover:bg-destructive/20 transition-all"
-                                >
-                                  Delete
-                                </button>
-                              </div>
-                            )}
                           </div>
                         );
                       })}
