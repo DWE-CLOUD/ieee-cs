@@ -12,8 +12,10 @@ import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import MagicLogin from "./pages/MagicLogin";
 import Profile from "./pages/Profile";
+import ResumeEditor from "./pages/ResumeEditor";
 import Admin from "./pages/Admin";
 import Gallery from "./pages/Gallery";
+import Events from "./pages/Events";
 import MemberProfile from "./pages/MemberProfile";
 import NotFound from "./pages/NotFound";
 
@@ -35,8 +37,10 @@ const App = () => (
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/magic-login" element={<MagicLogin />} />
             <Route path="/profile" element={<Profile />} />
+            <Route path="/resume" element={<ResumeEditor />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="/gallery" element={<Gallery />} />
+            <Route path="/events" element={<Events />} />
             <Route path="/members/:identifier" element={<MemberProfile />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />

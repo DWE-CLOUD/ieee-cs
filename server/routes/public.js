@@ -409,8 +409,16 @@ router.get('/events/upcoming', async (_req, res) => {
       `
         SELECT *
         FROM events
-        WHERE status = 'upcoming' AND date >= now()
-        ORDER BY date ASC
+        ORDER BY
+          CASE
+            WHEN status = 'ongoing'
+              OR (date <= now() AND COALESCE(end_date, date) >= now())
+              THEN 0
+            WHEN date >= now() THEN 1
+            ELSE 2
+          END,
+          CASE WHEN COALESCE(end_date, date) >= now() THEN date END ASC,
+          CASE WHEN COALESCE(end_date, date) < now() THEN date END DESC
         LIMIT 6
       `
     );

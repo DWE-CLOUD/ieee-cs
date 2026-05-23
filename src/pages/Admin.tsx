@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { 
   ArrowLeft, Briefcase, Users, UserCheck, FileText, Plus, Edit2, Trash2, 
   Loader2, Check, X, ChevronDown, Eye, Clock, Mail, Phone, Download, Settings, Shield,
-  CalendarDays, MapPin, Link as LinkIcon, Image, Star, Award
+  CalendarDays, MapPin, Link as LinkIcon, Image, Star, Award, Search
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
@@ -105,6 +105,7 @@ const Admin = () => {
   const [users, setUsers] = useState<(UserProfile & { roles: UserRole[] })[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
   const [isDataLoading, setIsDataLoading] = useState(true);
+  const [userSearch, setUserSearch] = useState('');
 
   // Modal states
   const [showPositionModal, setShowPositionModal] = useState(false);
@@ -234,6 +235,15 @@ const Admin = () => {
     { id: 'applications' as TabType, label: 'Applications', icon: FileText, count: applications.filter(a => a.status === 'pending').length },
     { id: 'users' as TabType, label: 'Users', icon: UserCheck, count: users.length },
   ];
+
+  const filteredUsers = users.filter((u) => {
+    const query = userSearch.trim().toLowerCase();
+    if (!query) return true;
+
+    return [u.display_name, u.email, u.user_id, ...u.roles.map((role) => role.role)]
+      .filter(Boolean)
+      .some((value) => String(value).toLowerCase().includes(query));
+  });
 
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
@@ -566,12 +576,24 @@ const Admin = () => {
                 {/* Users Tab */}
                 {activeTab === 'users' && (
                   <div>
-                    <div className="p-6 border-b border-border/50">
-                      <h2 className="font-serif text-xl text-foreground">All Users</h2>
-                      <p className="text-sm text-muted-foreground mt-1">Manage user roles and team assignments</p>
+                    <div className="flex flex-col gap-4 p-6 border-b border-border/50 lg:flex-row lg:items-center lg:justify-between">
+                      <div>
+                        <h2 className="font-serif text-xl text-foreground">All Users</h2>
+                        <p className="text-sm text-muted-foreground mt-1">Manage user roles and team assignments</p>
+                      </div>
+                      <label className="relative w-full lg:w-80">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                        <input
+                          type="search"
+                          value={userSearch}
+                          onChange={(event) => setUserSearch(event.target.value)}
+                          placeholder="Search users, email, roles"
+                          className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-accent/40"
+                        />
+                      </label>
                     </div>
                     <div className="divide-y divide-border/50">
-                      {users.map((u) => {
+                      {filteredUsers.map((u) => {
                         const userIsAdmin = u.roles.some(r => r.role === 'admin');
                         const userIsManager = u.roles.some(r => r.role === 'manager');
                         const isCurrentUser = u.user_id === user?.id;
@@ -622,6 +644,11 @@ const Admin = () => {
                           </div>
                         );
                       })}
+                      {filteredUsers.length === 0 && (
+                        <div className="text-center py-12 text-muted-foreground">
+                          No users match your search.
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}

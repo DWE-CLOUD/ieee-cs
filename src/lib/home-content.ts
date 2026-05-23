@@ -213,18 +213,18 @@ export const defaultHomeContent: HomePageContent = {
   },
   upcomingEvents: {
     eyebrow: "What's happening",
-    title: 'Upcoming Events',
-    description: 'Join us for workshops, hackathons, and networking opportunities',
+    title: 'Events',
+    description: 'Explore our workshops, hackathons, and networking opportunities',
     viewAllLabel: 'View all events',
-    viewAllHref: '/#events',
-    emptyHint: 'Add upcoming events from the admin dashboard to show them here.',
+    viewAllHref: '/events',
+    emptyHint: 'Add events from the admin dashboard to show them here.',
   },
   footer: {
     description:
       'Empowering the next generation of tech leaders through hands-on learning, community building, and innovation.',
     quickLinks: [
       { label: 'About Us', href: '/#about' },
-      { label: 'Events', href: '/#events' },
+      { label: 'Events', href: '/events' },
       { label: 'Team', href: '/#team' },
       { label: 'Gallery', href: '/gallery' },
       { label: 'Positions', href: '/positions' },

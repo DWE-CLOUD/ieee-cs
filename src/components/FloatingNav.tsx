@@ -56,7 +56,7 @@ const FloatingNav = () => {
   const navItems = [
     { name: "Home", icon: Home, href: "#top", isRoute: false },
     { name: "About", icon: Info, href: "#about", isRoute: false },
-    { name: "Events", icon: Calendar, href: "#events", isRoute: false },
+    { name: "Events", icon: Calendar, href: "/events", isRoute: true },
     { name: "Team", icon: Users, href: "#team", isRoute: false },
     { name: "Positions", icon: Briefcase, href: "/positions", isRoute: true },
   ];

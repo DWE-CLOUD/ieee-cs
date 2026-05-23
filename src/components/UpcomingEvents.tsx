@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { ArrowRight, Calendar, MapPin, Clock, ExternalLink, Sparkles } from "lucide-react";
 import { api } from "@/lib/api";
-import { format, isToday, isTomorrow, differenceInDays } from "date-fns";
+import { differenceInCalendarDays, format, isToday, isTomorrow } from "date-fns";
 import LazyImage from "@/components/LazyImage";
 import SmartLink from "@/components/SmartLink";
 import { useHomeContent } from "@/components/home/HomeContentProvider";
@@ -47,8 +47,9 @@ const UpcomingEvents = () => {
     const date = new Date(dateStr);
     if (isToday(date)) return "Today";
     if (isTomorrow(date)) return "Tomorrow";
-    const days = differenceInDays(date, new Date());
-    if (days < 7) return `In ${days} days`;
+    const days = differenceInCalendarDays(date, new Date());
+    if (days > 1 && days < 7) return `In ${days} days`;
+    if (days === -1) return "Yesterday";
     return format(date, "MMM d");
   };
 
@@ -111,7 +112,7 @@ const UpcomingEvents = () => {
         ) : events.length === 0 ? (
           <div className="rounded-2xl border border-border/50 bg-card p-8 text-center">
             <p className="text-sm text-muted-foreground">
-              No upcoming events are available from the backend yet.
+              No events are available from the backend yet.
             </p>
           </div>
         ) : (
