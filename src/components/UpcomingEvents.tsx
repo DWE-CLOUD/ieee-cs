@@ -20,6 +20,30 @@ interface Event {
   status: string;
 }
 
+type EventState = "upcoming" | "ongoing" | "past";
+
+const getEventState = (event: Event): EventState => {
+  const now = Date.now();
+  const start = new Date(event.date).getTime();
+  const end = new Date(event.end_date || event.date).getTime();
+
+  if (event.status === "ongoing" || (start <= now && end >= now)) return "ongoing";
+  if (event.status === "completed" || end < now) return "past";
+  return "upcoming";
+};
+
+const getStatusLabel = (state: EventState) => {
+  if (state === "ongoing") return "Live now";
+  if (state === "past") return "Past";
+  return "Upcoming";
+};
+
+const getStatusClass = (state: EventState) => {
+  if (state === "ongoing") return "bg-green-500/15 text-green-600 border-green-500/30";
+  if (state === "past") return "bg-muted text-muted-foreground border-border";
+  return "bg-accent/15 text-accent border-accent/30";
+};
+
 const UpcomingEvents = () => {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
@@ -64,31 +88,126 @@ const UpcomingEvents = () => {
     }
   };
 
+  const featuredEvent = events.find((event) => event.is_featured) || events[0];
+  const supportingEvents = events
+    .filter((event) => event.id !== featuredEvent?.id)
+    .slice(0, 4);
+
+  const renderEventCard = (event: Event, featured = false) => {
+    const state = getEventState(event);
+
+    return (
+      <article
+        key={event.id}
+        className={`group relative bg-card border border-border/50 transition-all duration-500 hover:border-accent/30 hover:shadow-elegant overflow-hidden ${
+          featured ? "rounded-3xl" : "rounded-2xl"
+        }`}
+      >
+        {featured && event.image_url && (
+          <div className="aspect-[16/8] overflow-hidden bg-muted">
+            <LazyImage
+              src={event.image_url}
+              alt={event.title}
+              fetchPriority="low"
+              sizes="(min-width: 1024px) 58vw, 100vw"
+              className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+            />
+          </div>
+        )}
+
+        <div className={featured ? "p-6 md:p-8" : "p-5"}>
+          <div className="flex flex-wrap items-center gap-2 mb-4">
+            <span className={`text-xs font-medium uppercase tracking-wider px-3 py-1.5 rounded-full border ${getStatusClass(state)}`}>
+              {getStatusLabel(state)}
+            </span>
+            <span className={`text-xs font-medium uppercase tracking-wider px-3 py-1.5 rounded-full border ${getTypeColor(event.type)}`}>
+              {event.type}
+            </span>
+            {featured && event.is_featured && (
+              <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-gold/15 text-gold text-xs font-medium">
+                <Sparkles className="w-3 h-3" />
+                Featured
+              </span>
+            )}
+          </div>
+
+          <h3 className={`font-serif text-foreground group-hover:text-accent transition-colors ${
+            featured ? "text-3xl md:text-4xl" : "text-xl"
+          }`}>
+            {event.title}
+          </h3>
+
+          {event.description && (
+            <p className={`text-muted-foreground mt-3 ${
+              featured ? "text-base leading-relaxed line-clamp-3" : "text-sm line-clamp-2"
+            }`}>
+              {event.description}
+            </p>
+          )}
+
+          <div className="flex flex-wrap items-center gap-3 mt-5 text-xs text-muted-foreground">
+            <span className="inline-flex items-center gap-1.5">
+              <Calendar className="w-3.5 h-3.5" />
+              {getDateLabel(event.date)}
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <Clock className="w-3.5 h-3.5" />
+              {format(new Date(event.date), "h:mm a")}
+            </span>
+            {event.location && (
+              <span className="inline-flex items-center gap-1.5">
+                <MapPin className="w-3.5 h-3.5" />
+                {event.location}
+              </span>
+            )}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3 mt-6">
+            <SmartLink
+              href="/events"
+              className="inline-flex items-center gap-2 text-sm font-medium text-foreground hover:text-accent transition-colors"
+            >
+              View details
+              <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+            </SmartLink>
+            {event.registration_url && state !== "past" && (
+              <a
+                href={event.registration_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-accent text-accent-foreground font-medium text-sm transition-all hover:opacity-90"
+              >
+                Register
+                <ExternalLink className="w-4 h-4" />
+              </a>
+            )}
+          </div>
+        </div>
+      </article>
+    );
+  };
+
   return (
-    <section id="events" className="px-8 py-20 bg-gradient-to-b from-background to-secondary/30 relative overflow-hidden">
-      {/* Background decoration */}
-      <div className="absolute top-0 right-0 w-96 h-96 bg-accent/5 rounded-full blur-3xl" />
-      <div className="absolute bottom-0 left-0 w-64 h-64 bg-gold/5 rounded-full blur-3xl" />
-      
+    <section id="events" className="px-4 py-20 md:px-8 bg-gradient-to-b from-background to-secondary/30 relative overflow-hidden">
       <div className="max-w-7xl mx-auto relative">
-        <div className="flex items-end justify-between mb-12">
+        <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between mb-12">
           <div>
             <span className="inline-flex items-center gap-2 text-xs uppercase tracking-widest text-accent mb-3">
               <Sparkles className="w-3 h-3" />
-              {content.upcomingEvents.eyebrow}
+              {content.upcomingEvents.eyebrow || "What's happening"}
             </span>
             <h2 className="font-serif text-4xl md:text-5xl text-foreground">
-              {content.upcomingEvents.title}
+              Events
             </h2>
-            <p className="text-muted-foreground mt-2 max-w-md">
-              {content.upcomingEvents.description}
+            <p className="text-muted-foreground mt-2 max-w-xl">
+              Explore live programs, upcoming sessions, and highlights from past IEEE CS events.
             </p>
           </div>
           <SmartLink
-            href={content.upcomingEvents.viewAllHref}
-            className="hidden md:flex items-center gap-2 px-5 py-2.5 rounded-full border border-border text-sm font-medium text-foreground hover:bg-muted transition-all group"
+            href="/events"
+            className="hidden md:inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-border text-sm font-medium text-foreground hover:bg-muted transition-all group"
           >
-            {content.upcomingEvents.viewAllLabel}
+            View all events
             <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
           </SmartLink>
         </div>
@@ -116,105 +235,22 @@ const UpcomingEvents = () => {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {events.map((event, index) => (
-              <div
-                key={event.id}
-                className={`group relative bg-card rounded-2xl border transition-all duration-500 hover:shadow-elegant cursor-pointer overflow-hidden ${
-                  event.is_featured 
-                    ? 'border-accent/30 md:col-span-2 md:row-span-2' 
-                    : 'border-border/50 hover:border-foreground/20'
-                }`}
-                style={{ animationDelay: `${index * 100}ms` }}
-              >
-                {/* Featured badge */}
-                {event.is_featured && (
-                  <div className="absolute top-4 right-4 z-10">
-                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-accent text-accent-foreground text-xs font-medium">
-                      <Sparkles className="w-3 h-3" />
-                      Featured
-                    </span>
-                  </div>
-                )}
-
-                {/* Image for featured events */}
-                {event.is_featured && (event as Event).image_url && (
-                  <div className="aspect-video overflow-hidden">
-                    <LazyImage 
-                      src={(event as Event).image_url!} 
-                      alt={event.title}
-                      fetchPriority="low"
-                      sizes="(min-width: 768px) 66vw, 100vw"
-                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                    />
-                  </div>
-                )}
-
-                <div className={`p-6 ${event.is_featured ? 'md:p-8' : ''}`}>
-                  {/* Type & Date */}
-                  <div className="flex items-center justify-between mb-4">
-                    <span className={`text-xs font-medium uppercase tracking-wider px-3 py-1.5 rounded-full border ${getTypeColor(event.type)}`}>
-                      {event.type}
-                    </span>
-                    <div className="flex items-center gap-1.5 text-sm">
-                      <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
-                      <span className="font-medium text-foreground">{getDateLabel(event.date)}</span>
-                    </div>
-                  </div>
-
-                  {/* Title */}
-                  <h3 className={`font-serif text-foreground mb-2 group-hover:text-accent transition-colors ${
-                    event.is_featured ? 'text-2xl md:text-3xl' : 'text-xl'
-                  }`}>
-                    {event.title}
-                  </h3>
-
-                  {/* Description */}
-                  <p className={`text-muted-foreground mb-4 ${event.is_featured ? 'text-base' : 'text-sm line-clamp-2'}`}>
-                    {event.description}
-                  </p>
-
-                  {/* Meta info */}
-                  <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
-                    {event.location && (
-                      <div className="flex items-center gap-1.5">
-                        <MapPin className="w-3.5 h-3.5" />
-                        {event.location}
-                      </div>
-                    )}
-                    <div className="flex items-center gap-1.5">
-                      <Clock className="w-3.5 h-3.5" />
-                      {format(new Date(event.date), "h:mm a")}
-                    </div>
-                  </div>
-
-                  {/* Registration button for featured */}
-                  {event.is_featured && (event as Event).registration_url && (
-                    <a
-                      href={(event as Event).registration_url!}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 mt-6 px-5 py-2.5 rounded-xl bg-accent text-accent-foreground font-medium text-sm transition-all hover:opacity-90"
-                    >
-                      Register Now
-                      <ExternalLink className="w-4 h-4" />
-                    </a>
-                  )}
-                </div>
-
-                {/* Hover gradient overlay */}
-                <div className="absolute inset-0 bg-gradient-to-t from-accent/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+          <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_0.8fr] gap-6">
+            {featuredEvent && renderEventCard(featuredEvent, true)}
+            {supportingEvents.length > 0 && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4">
+                {supportingEvents.map((event) => renderEventCard(event))}
               </div>
-            ))}
+            )}
           </div>
         )}
 
         {/* Mobile view all link */}
         <SmartLink
-          href={content.upcomingEvents.viewAllHref}
+          href="/events"
           className="md:hidden flex items-center justify-center gap-2 mt-8 px-5 py-2.5 rounded-full border border-border text-sm font-medium text-foreground hover:bg-muted transition-all mx-auto w-fit"
         >
-          {content.upcomingEvents.viewAllLabel}
+          View all events
           <ArrowRight className="w-4 h-4" />
         </SmartLink>
 

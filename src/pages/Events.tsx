@@ -180,7 +180,7 @@ const Events = () => {
       <section className="px-4 py-8 md:px-8 md:py-10">
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mb-8">
-            <div className="flex gap-2 overflow-x-auto pb-1">
+            <div className="flex flex-wrap gap-2">
               {filters.map((item) => (
                 <button
                   key={item.id}
@@ -295,17 +295,23 @@ const Events = () => {
                         )}
                       </div>
 
-                      {event.registration_url && state !== "past" && (
-                        <a
-                          href={event.registration_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-2 mt-6 px-5 py-2.5 rounded-xl bg-foreground text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity"
-                        >
-                          Register
-                          <ExternalLink className="w-4 h-4" />
-                        </a>
-                      )}
+                      <div className="mt-6">
+                        {event.registration_url ? (
+                          <a
+                            href={event.registration_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-foreground text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity"
+                          >
+                            {state === "past" ? "Open event link" : "Register"}
+                            <ExternalLink className="w-4 h-4" />
+                          </a>
+                        ) : (
+                          <span className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-border bg-muted/40 text-sm text-muted-foreground">
+                            No event link added
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </article>
                 );
