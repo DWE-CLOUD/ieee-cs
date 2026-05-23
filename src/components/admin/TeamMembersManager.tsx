@@ -1,7 +1,15 @@
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { Users, Loader2, UserX, Download, FileSpreadsheet, Crown, UserPlus, ShieldCheck } from 'lucide-react';
+import { Users, Loader2, UserX, Download, FileSpreadsheet, Crown, UserPlus, ShieldCheck, ChevronDown, Eye, X } from 'lucide-react';
 import { api } from '@/lib/api';
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 interface ApplicationResponse {
   field_label: string;
@@ -51,6 +59,9 @@ const TeamMembersManager = ({ teams, users, onUpdate }: TeamMembersManagerProps)
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedTeam, setSelectedTeam] = useState<string>('all');
+  const [exportMode, setExportMode] = useState('all');
+  const [exportDetail, setExportDetail] = useState('full');
+  const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
   const [isAssigning, setIsAssigning] = useState(false);
   const [assignment, setAssignment] = useState({
     user_id: '',
@@ -202,6 +213,23 @@ const TeamMembersManager = ({ teams, users, onUpdate }: TeamMembersManagerProps)
     ? members 
     : members.filter(m => m.team_id === selectedTeam);
 
+  const getExportMembers = () => {
+    switch (exportMode) {
+      case 'without-heads':
+        return filteredMembers.filter((member) => !member.is_head);
+      case 'heads-leads':
+        return filteredMembers.filter((member) => member.is_head || member.is_lead);
+      case 'heads':
+        return filteredMembers.filter((member) => member.is_head);
+      case 'leads':
+        return filteredMembers.filter((member) => member.is_lead);
+      case 'members-only':
+        return filteredMembers.filter((member) => !member.is_head && !member.is_lead);
+      default:
+        return filteredMembers;
+    }
+  };
+
   const getTeamName = (teamId: string) => {
     return teams.find(t => t.id === teamId)?.name || 'Unknown Team';
   };
@@ -210,19 +238,17 @@ const TeamMembersManager = ({ teams, users, onUpdate }: TeamMembersManagerProps)
     return teams.find(t => t.id === teamId)?.color || '#3B82F6';
   };
 
-  const downloadNamesOnly = () => {
-    const data = filteredMembers.map(member => ({
+  const buildNamesData = (sourceMembers: TeamMember[]) =>
+    sourceMembers.map(member => ({
       'Name': member.profiles?.display_name || 'Unknown',
       'Team': getTeamName(member.team_id),
-      'Position': member.position_title
+      'Position': member.position_title,
+      'Head': member.is_head ? 'Yes' : 'No',
+      'Lead': member.is_lead ? 'Yes' : 'No',
     }));
 
-    downloadCSV(data, 'team_members_names.csv');
-    toast.success('Names downloaded successfully');
-  };
-
-  const downloadFullData = () => {
-    const data = filteredMembers.map(member => {
+  const buildFullData = (sourceMembers: TeamMember[]) =>
+    sourceMembers.map(member => {
       const baseData: Record<string, string> = {
         'Name': member.profiles?.display_name || 'Unknown',
         'Email': member.profiles?.email || '',
@@ -249,8 +275,14 @@ const TeamMembersManager = ({ teams, users, onUpdate }: TeamMembersManagerProps)
       return baseData;
     });
 
-    downloadCSV(data, 'team_members_full_data.csv');
-    toast.success('Full data downloaded successfully');
+  const downloadSelectedData = () => {
+    const exportMembers = getExportMembers();
+    const data = exportDetail === 'names' ? buildNamesData(exportMembers) : buildFullData(exportMembers);
+    const teamPart = selectedTeam === 'all' ? 'all_teams' : getTeamName(selectedTeam).toLowerCase().replace(/[^a-z0-9]+/g, '_');
+    const filename = `team_members_${teamPart}_${exportMode}_${exportDetail}.csv`;
+
+    downloadCSV(data, filename);
+    toast.success('Team data downloaded');
   };
 
   const downloadCSV = (data: Record<string, string>[], filename: string) => {
@@ -376,29 +408,34 @@ const TeamMembersManager = ({ teams, users, onUpdate }: TeamMembersManagerProps)
               Mark as lead
             </label>
             {assignment.is_lead && (
-              <div className="flex flex-wrap gap-2">
-                {permissionOptions.map((permission) => (
-                  <label
-                    key={permission.id}
-                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-background border border-border text-xs text-foreground"
-                  >
-                    <input
-                      type="checkbox"
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="inline-flex w-full items-center justify-between gap-2 px-3 py-2 rounded-lg border border-border bg-background text-sm text-foreground hover:bg-muted transition-colors">
+                    <span>{assignment.permissions.length || 'No'} permissions selected</span>
+                    <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuLabel>Lead permissions</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {permissionOptions.map((permission) => (
+                    <DropdownMenuCheckboxItem
+                      key={permission.id}
                       checked={assignment.permissions.includes(permission.id)}
-                      onChange={(e) =>
+                      onCheckedChange={(checked) =>
                         setAssignment((current) => ({
                           ...current,
-                          permissions: e.target.checked
+                          permissions: checked
                             ? [...current.permissions, permission.id]
                             : current.permissions.filter((item) => item !== permission.id),
                         }))
                       }
-                      className="w-3 h-3"
-                    />
-                    {permission.label}
-                  </label>
-                ))}
-              </div>
+                    >
+                      {permission.label}
+                    </DropdownMenuCheckboxItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
             <button
               onClick={handleAssignMember}
@@ -435,22 +472,34 @@ const TeamMembersManager = ({ teams, users, onUpdate }: TeamMembersManagerProps)
             </select>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
-            <button
-              onClick={downloadNamesOnly}
-              disabled={filteredMembers.length === 0}
-              className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-muted hover:bg-muted/80 text-foreground text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] items-stretch sm:items-center gap-2 w-full sm:w-auto">
+            <select
+              value={exportMode}
+              onChange={(e) => setExportMode(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-accent/50"
             >
-              <Download className="w-4 h-4" />
-              Names Only
-            </button>
+              <option value="all">Full team</option>
+              <option value="without-heads">Full team without heads</option>
+              <option value="heads-leads">Heads and leads</option>
+              <option value="heads">Heads only</option>
+              <option value="leads">Leads only</option>
+              <option value="members-only">Members only</option>
+            </select>
+            <select
+              value={exportDetail}
+              onChange={(e) => setExportDetail(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-accent/50"
+            >
+              <option value="full">Full data + forms</option>
+              <option value="names">Names/roles only</option>
+            </select>
             <button
-              onClick={downloadFullData}
+              onClick={downloadSelectedData}
               disabled={filteredMembers.length === 0}
               className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-accent text-accent-foreground text-sm font-medium transition-colors hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <FileSpreadsheet className="w-4 h-4" />
-              Full Data + Forms
+              {exportDetail === 'names' ? <Download className="w-4 h-4" /> : <FileSpreadsheet className="w-4 h-4" />}
+              Download
             </button>
           </div>
         </div>
@@ -459,7 +508,19 @@ const TeamMembersManager = ({ teams, users, onUpdate }: TeamMembersManagerProps)
       {/* Members list */}
       <div className="divide-y divide-border/50">
         {filteredMembers.map((member) => (
-          <div key={member.id} className="flex flex-col gap-4 p-4 md:p-6 hover:bg-muted/30 transition-colors sm:flex-row sm:items-center sm:justify-between">
+          <div
+            key={member.id}
+            role="button"
+            tabIndex={0}
+            onClick={() => setSelectedMember(member)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                setSelectedMember(member);
+              }
+            }}
+            className="flex flex-col gap-4 p-4 md:p-6 hover:bg-muted/30 transition-colors sm:flex-row sm:items-center sm:justify-between cursor-pointer"
+          >
             <div className="flex items-start sm:items-center gap-4 min-w-0">
               <div 
                 className="w-10 h-10 rounded-full flex items-center justify-center relative"
@@ -505,7 +566,10 @@ const TeamMembersManager = ({ teams, users, onUpdate }: TeamMembersManagerProps)
             </div>
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
               <button
-                onClick={() => handleToggleLead(member)}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  handleToggleLead(member);
+                }}
                 className={`flex items-center justify-center gap-2 px-3 py-2 rounded-lg transition-colors ${
                   member.is_lead
                     ? 'bg-green-500/15 text-green-600 hover:bg-green-500/25'
@@ -517,7 +581,10 @@ const TeamMembersManager = ({ teams, users, onUpdate }: TeamMembersManagerProps)
                 <span className="text-sm font-medium">{member.is_lead ? 'Lead' : 'Make Lead'}</span>
               </button>
               <button
-                onClick={() => handleToggleHead(member)}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  handleToggleHead(member);
+                }}
                 className={`flex items-center justify-center gap-2 px-3 py-2 rounded-lg transition-colors ${
                   member.is_head 
                     ? 'bg-accent/15 text-accent hover:bg-accent/25' 
@@ -529,7 +596,20 @@ const TeamMembersManager = ({ teams, users, onUpdate }: TeamMembersManagerProps)
                 <span className="text-sm font-medium">{member.is_head ? 'Head' : 'Make Head'}</span>
               </button>
               <button
-                onClick={() => handleRemoveMember(member.id, member.profiles?.display_name || 'this member')}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setSelectedMember(member);
+                }}
+                className="flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+              >
+                <Eye className="w-4 h-4" />
+                <span className="text-sm font-medium">Details</span>
+              </button>
+              <button
+                onClick={(event) => {
+                  event.stopPropagation();
+                  handleRemoveMember(member.id, member.profiles?.display_name || 'this member');
+                }}
                 className="flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-destructive hover:bg-destructive/10 transition-colors"
               >
                 <UserX className="w-4 h-4" />
@@ -538,24 +618,33 @@ const TeamMembersManager = ({ teams, users, onUpdate }: TeamMembersManagerProps)
             </div>
             {member.is_lead && (
               <div className="sm:col-span-2 w-full sm:ml-14">
-                <div className="flex flex-wrap gap-2 pt-1">
-                  {permissionOptions.map((permission) => {
-                    const enabled = (member.permissions || []).includes(permission.id);
-                    return (
-                      <button
-                        key={permission.id}
-                        onClick={() => handleTogglePermission(member, permission.id)}
-                        className={`px-3 py-1.5 rounded-full border text-xs font-medium transition-colors ${
-                          enabled
-                            ? 'bg-accent/15 text-accent border-accent/30'
-                            : 'bg-background text-muted-foreground border-border hover:text-foreground'
-                        }`}
-                      >
-                        {permission.label}
-                      </button>
-                    );
-                  })}
-                </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      onClick={(event) => event.stopPropagation()}
+                      className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors"
+                    >
+                      Permissions ({(member.permissions || []).length})
+                      <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-56" onClick={(event) => event.stopPropagation()}>
+                    <DropdownMenuLabel>Lead permissions</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    {permissionOptions.map((permission) => {
+                      const enabled = (member.permissions || []).includes(permission.id);
+                      return (
+                        <DropdownMenuCheckboxItem
+                          key={permission.id}
+                          checked={enabled}
+                          onCheckedChange={() => handleTogglePermission(member, permission.id)}
+                        >
+                          {permission.label}
+                        </DropdownMenuCheckboxItem>
+                      );
+                    })}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             )}
           </div>
@@ -568,8 +657,128 @@ const TeamMembersManager = ({ teams, users, onUpdate }: TeamMembersManagerProps)
           </div>
         )}
       </div>
+
+      {selectedMember && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-foreground/30 backdrop-blur-md"
+          onClick={() => setSelectedMember(null)}
+        >
+          <div
+            className="relative w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-3xl bg-background border border-border/50 shadow-elegant"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              onClick={() => setSelectedMember(null)}
+              className="absolute right-4 top-4 z-10 w-10 h-10 rounded-full bg-muted flex items-center justify-center hover:bg-foreground hover:text-background transition-colors"
+              aria-label="Close member details"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="p-6 md:p-8 border-b border-border/50">
+              <div className="flex items-start gap-4 pr-10">
+                <div
+                  className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0"
+                  style={{ backgroundColor: `${getTeamColor(selectedMember.team_id)}20` }}
+                >
+                  <Users className="w-7 h-7" style={{ color: getTeamColor(selectedMember.team_id) }} />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="font-serif text-2xl md:text-3xl text-foreground">
+                      {selectedMember.profiles?.display_name || 'Unknown User'}
+                    </h2>
+                    {selectedMember.is_head && (
+                      <span className="px-2 py-1 rounded-full text-xs font-semibold bg-accent/15 text-accent">
+                        Head
+                      </span>
+                    )}
+                    {selectedMember.is_lead && (
+                      <span className="px-2 py-1 rounded-full text-xs font-semibold bg-green-500/15 text-green-600">
+                        Lead
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {selectedMember.position_title} in {getTeamName(selectedMember.team_id)}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6 md:p-8 grid gap-6 md:grid-cols-2">
+              <DetailSection title="Contact">
+                <DetailRow label="Email" value={selectedMember.profiles?.email} />
+                <DetailRow label="Phone" value={selectedMember.profiles?.phone} />
+                <DetailRow label="LinkedIn" value={selectedMember.profiles?.linkedin_url} />
+                <DetailRow label="GitHub" value={selectedMember.profiles?.github_url} />
+                <DetailRow label="Twitter" value={selectedMember.profiles?.twitter_url} />
+              </DetailSection>
+
+              <DetailSection title="Team Access">
+                <DetailRow label="Team" value={getTeamName(selectedMember.team_id)} />
+                <DetailRow label="Position" value={selectedMember.position_title} />
+                <DetailRow label="Head" value={selectedMember.is_head ? 'Yes' : 'No'} />
+                <DetailRow label="Lead" value={selectedMember.is_lead ? 'Yes' : 'No'} />
+                <DetailRow
+                  label="Permissions"
+                  value={
+                    (selectedMember.permissions || [])
+                      .map((id) => permissionOptions.find((permission) => permission.id === id)?.label || id)
+                      .join(', ') || 'None'
+                  }
+                />
+                <DetailRow label="Joined" value={new Date(selectedMember.joined_at).toLocaleString()} />
+              </DetailSection>
+
+              <div className="md:col-span-2">
+                <DetailSection title="Bio">
+                  <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                    {selectedMember.profiles?.bio || 'No bio added.'}
+                  </p>
+                </DetailSection>
+              </div>
+
+              <div className="md:col-span-2">
+                <DetailSection title="Application Form Responses">
+                  {selectedMember.applicationResponses && selectedMember.applicationResponses.length > 0 ? (
+                    <div className="grid gap-3">
+                      {selectedMember.applicationResponses.map((response, index) => (
+                        <div key={`${response.field_label}-${index}`} className="rounded-xl border border-border/50 p-4">
+                          <p className="text-xs uppercase tracking-wider text-muted-foreground mb-1">
+                            {response.field_label}
+                          </p>
+                          <p className="text-sm text-foreground whitespace-pre-wrap">
+                            {response.response_value || 'No response'}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No application responses found.</p>
+                  )}
+                </DetailSection>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
+
+const DetailSection = ({ title, children }: { title: string; children: React.ReactNode }) => (
+  <section className="rounded-2xl border border-border/50 bg-card p-5">
+    <h3 className="font-medium text-foreground mb-4">{title}</h3>
+    {children}
+  </section>
+);
+
+const DetailRow = ({ label, value }: { label: string; value?: string | null }) => (
+  <div className="grid grid-cols-[110px_1fr] gap-3 py-2 border-b border-border/40 last:border-0">
+    <span className="text-xs uppercase tracking-wider text-muted-foreground">{label}</span>
+    <span className="text-sm text-foreground break-words">{value || 'Not added'}</span>
+  </div>
+);
 
 export default TeamMembersManager;
