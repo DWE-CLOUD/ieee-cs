@@ -168,10 +168,15 @@ CREATE TABLE IF NOT EXISTS team_members (
   team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
   position_title TEXT NOT NULL,
   is_head BOOLEAN NOT NULL DEFAULT false,
+  is_lead BOOLEAN NOT NULL DEFAULT false,
+  permissions TEXT[] DEFAULT '{}',
   joined_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE(user_id, team_id)
 );
+
+ALTER TABLE team_members ADD COLUMN IF NOT EXISTS is_lead BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE team_members ADD COLUMN IF NOT EXISTS permissions TEXT[] DEFAULT '{}';
 
 CREATE TABLE IF NOT EXISTS gallery_collaborators (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

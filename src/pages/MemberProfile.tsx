@@ -22,6 +22,8 @@ interface TeamMembership {
   team_id: string;
   position_title: string;
   is_head: boolean;
+  is_lead: boolean;
+  permissions: string[];
   joined_at: string;
   team: {
     id: string;
@@ -241,7 +243,7 @@ const MemberProfile = () => {
                   >
                     <Award className="w-4 h-4" />
                     {membership.team.name}
-                    {membership.is_head ? ' Head' : ''}
+                    {membership.is_head ? ' Head' : membership.is_lead ? ' Lead' : ''}
                   </span>
                 ))}
               </div>
@@ -396,6 +398,17 @@ const MemberProfile = () => {
                               }}
                             >
                               Domain Head
+                            </span>
+                          ) : null}
+                          {membership.is_lead && !membership.is_head ? (
+                            <span
+                              className="px-2 py-1 rounded-full text-xs font-semibold"
+                              style={{
+                                backgroundColor: `${membership.team.color}14`,
+                                color: membership.team.color,
+                              }}
+                            >
+                              Lead
                             </span>
                           ) : null}
                         </div>

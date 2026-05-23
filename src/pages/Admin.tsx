@@ -93,7 +93,7 @@ interface UserRole {
 }
 
 const Admin = () => {
-  const { user, isAdmin, loading } = useAuth();
+  const { user, isAdmin, isManager, loading } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabType>('positions');
   const [isLoaded, setIsLoaded] = useState(false);
@@ -121,17 +121,23 @@ const Admin = () => {
   }, []);
 
   useEffect(() => {
-    if (!loading && (!user || !isAdmin)) {
+    if (!isAdmin && isManager && !['members', 'applications'].includes(activeTab)) {
+      setActiveTab('members');
+    }
+  }, [activeTab, isAdmin, isManager]);
+
+  useEffect(() => {
+    if (!loading && (!user || (!isAdmin && !isManager))) {
       navigate('/');
       toast.error('Access denied');
     }
-  }, [user, isAdmin, loading, navigate]);
+  }, [user, isAdmin, isManager, loading, navigate]);
 
   useEffect(() => {
-    if (user && isAdmin) {
+    if (user && (isAdmin || isManager)) {
       fetchData();
     }
-  }, [user, isAdmin, activeTab]);
+  }, [user, isAdmin, isManager, activeTab]);
 
   const fetchData = async () => {
     setIsDataLoading(true);
@@ -217,7 +223,19 @@ const Admin = () => {
     }
   };
 
-  if (loading || !isAdmin) {
+  const handleDeleteUser = async (userId: string, label: string) => {
+    if (!confirm(`Delete ${label}? This removes the account, profile, applications, roles, and memberships.`)) return;
+
+    try {
+      await api.delete(`/api/admin/users/${userId}`);
+      toast.success('User deleted');
+      fetchData();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to delete user');
+    }
+  };
+
+  if (loading || (!isAdmin && !isManager)) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-accent" />
@@ -234,7 +252,7 @@ const Admin = () => {
     { id: 'landing' as TabType, label: 'Landing', icon: Settings, count: null },
     { id: 'applications' as TabType, label: 'Applications', icon: FileText, count: applications.filter(a => a.status === 'pending').length },
     { id: 'users' as TabType, label: 'Users', icon: UserCheck, count: users.length },
-  ];
+  ].filter((tab) => isAdmin || ['members', 'applications'].includes(tab.id));
 
   const filteredUsers = users.filter((u) => {
     const query = userSearch.trim().toLowerCase();
@@ -244,6 +262,13 @@ const Admin = () => {
       .filter(Boolean)
       .some((value) => String(value).toLowerCase().includes(query));
   });
+
+  const duplicateNameCounts = users.reduce<Record<string, number>>((acc, u) => {
+    const name = (u.display_name || '').trim().toLowerCase();
+    if (!name) return acc;
+    acc[name] = (acc[name] || 0) + 1;
+    return acc;
+  }, {});
 
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
@@ -597,6 +622,8 @@ const Admin = () => {
                         const userIsAdmin = u.roles.some(r => r.role === 'admin');
                         const userIsManager = u.roles.some(r => r.role === 'manager');
                         const isCurrentUser = u.user_id === user?.id;
+                        const nameKey = (u.display_name || '').trim().toLowerCase();
+                        const isDuplicateName = Boolean(nameKey && duplicateNameCounts[nameKey] > 1);
                         
                         return (
                           <div key={u.id} className="flex items-center justify-between p-6 hover:bg-muted/30 transition-colors">
@@ -614,8 +641,18 @@ const Admin = () => {
                                     Manager
                                   </span>
                                 )}
+                                {isDuplicateName && (
+                                  <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-destructive/10 text-destructive">
+                                    Duplicate name
+                                  </span>
+                                )}
                               </div>
                               <p className="text-sm text-muted-foreground">{u.email}</p>
+                              {isDuplicateName && (
+                                <p className="text-xs text-destructive mt-1">
+                                  {duplicateNameCounts[nameKey]} users have this display name.
+                                </p>
+                              )}
                             </div>
                             {!isCurrentUser && (
                               <div className="flex items-center gap-2">
@@ -638,6 +675,12 @@ const Admin = () => {
                                   }`}
                                 >
                                   {userIsAdmin ? 'Remove Admin' : 'Make Admin'}
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteUser(u.user_id, u.display_name || u.email || 'this user')}
+                                  className="px-4 py-2 rounded-lg text-sm font-medium bg-destructive/10 text-destructive hover:bg-destructive/20 transition-all"
+                                >
+                                  Delete
                                 </button>
                               </div>
                             )}

@@ -153,7 +153,19 @@ export const loadViewer = async (userId) => {
       FROM team_managers tm
       JOIN teams t ON t.id = tm.team_id
       WHERE tm.user_id = $1
-      ORDER BY t.name
+    `,
+    [userId]
+  );
+  const { rows: headedTeams } = await query(
+    `
+      SELECT t.id AS team_id, t.name AS team_name
+      FROM team_members tm
+      JOIN teams t ON t.id = tm.team_id
+      WHERE tm.user_id = $1
+        AND (
+          tm.is_head = true
+          OR tm.permissions @> ARRAY['manage_members']::text[]
+        )
     `,
     [userId]
   );
@@ -163,6 +175,9 @@ export const loadViewer = async (userId) => {
   );
 
   const roleList = roles.map((row) => row.role);
+  const teamAccess = [...managedTeams, ...headedTeams].filter(
+    (team, index, list) => list.findIndex((item) => item.team_id === team.team_id) === index
+  );
 
   return {
     user: {
@@ -202,9 +217,9 @@ export const loadViewer = async (userId) => {
     },
     roles: roleList,
     isAdmin: roleList.includes('admin'),
-    isManager: roleList.includes('manager'),
+    isManager: roleList.includes('manager') || teamAccess.length > 0,
     isGalleryCollaborator: collaborators.length > 0,
-    managedTeams,
+    managedTeams: teamAccess.sort((a, b) => a.team_name.localeCompare(b.team_name)),
   };
 };
 

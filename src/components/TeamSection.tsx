@@ -12,6 +12,8 @@ interface TeamMember {
   user_id: string;
   position_title: string;
   is_head?: boolean;
+  is_lead?: boolean;
+  permissions?: string[];
   profiles: {
     display_name: string | null;
     avatar_url: string | null;
@@ -441,7 +443,7 @@ const TeamSection = () => {
                       `}
                       style={{ opacity: window.innerWidth < 768 ? 1 : undefined }}
                     >
-                      {team.members.length} members
+                      {team.members.filter((member) => !member.is_head && !member.is_lead).length} members
                     </div>
 
                     {/* Arrow indicator */}
@@ -680,7 +682,7 @@ const TeamSection = () => {
                         return <Icon className="w-6 h-6 text-foreground" strokeWidth={1.5} />;
                       })()}
                       <span className="text-xs uppercase tracking-widest text-muted-foreground">
-                        / {selectedTeam.members.length} members /
+                        / {selectedTeam.members.length} people /
                       </span>
                     </div>
                     <h2 className="font-serif text-4xl md:text-5xl lg:text-6xl text-foreground mb-4">
@@ -746,6 +748,11 @@ const TeamSection = () => {
                                   <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-accent/15 text-accent text-[10px] font-semibold rounded-full flex-shrink-0">
                                     <Crown className="w-3 h-3" />
                                     Head
+                                  </span>
+                                )}
+                                {member.is_lead && !member.is_head && (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-500/15 text-green-600 text-[10px] font-semibold rounded-full flex-shrink-0">
+                                    Lead
                                   </span>
                                 )}
                               </div>

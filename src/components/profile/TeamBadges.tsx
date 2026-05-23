@@ -6,6 +6,8 @@ interface TeamMembership {
   id: string;
   team_id: string;
   position_title: string;
+  is_head: boolean;
+  is_lead: boolean;
   joined_at: string;
   teams: {
     id: string;
@@ -54,7 +56,9 @@ const TeamBadges = ({ userId }: TeamBadgesProps) => {
           <Award className="w-3.5 h-3.5" />
           <span>{membership.teams.name}</span>
           <span className="opacity-70">•</span>
-          <span className="opacity-80">{membership.position_title}</span>
+          <span className="opacity-80">
+            {membership.is_head ? 'Head' : membership.is_lead ? 'Lead' : membership.position_title}
+          </span>
         </div>
       ))}
     </div>

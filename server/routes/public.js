@@ -524,7 +524,11 @@ router.get('/teams-with-members', async (_req, res) => {
         ...team,
         members: members
           .filter((member) => member.team_id === team.id)
-          .sort((a, b) => Number(Boolean(b.is_head)) - Number(Boolean(a.is_head))),
+          .sort(
+            (a, b) =>
+              Number(Boolean(b.is_head)) - Number(Boolean(a.is_head)) ||
+              Number(Boolean(b.is_lead)) - Number(Boolean(a.is_lead))
+          ),
       }))
     );
   } catch (error) {
@@ -646,6 +650,49 @@ router.patch('/profile', requireAuth, async (req, res) => {
   }
 });
 
+router.patch('/profile/email', requireAuth, async (req, res) => {
+  const { email, password } = req.body || {};
+
+  if (!email || !password) {
+    res.status(400).json({ error: 'Email and current password are required' });
+    return;
+  }
+
+  try {
+    const normalizedEmail = normalizeEmail(email);
+    const { rows } = await query('SELECT id, email, password_hash FROM users WHERE id = $1', [
+      req.viewer.user.id,
+    ]);
+    const user = rows[0];
+
+    if (!user || !(await verifyPassword(password, user.password_hash))) {
+      res.status(401).json({ error: 'Current password is incorrect' });
+      return;
+    }
+
+    const updatedUser = await withTransaction(async (client) => {
+      const { rows: updatedRows } = await client.query(
+        'UPDATE users SET email = $2, updated_at = now() WHERE id = $1 RETURNING id, email',
+        [req.viewer.user.id, normalizedEmail]
+      );
+      await client.query('UPDATE profiles SET email = $2, updated_at = now() WHERE user_id = $1', [
+        req.viewer.user.id,
+        normalizedEmail,
+      ]);
+      return updatedRows[0];
+    });
+
+    setSessionCookie(res, updatedUser);
+    res.json({ ok: true, email: updatedUser.email });
+  } catch (error) {
+    if (String(error.message).includes('users_email_key')) {
+      res.status(409).json({ error: 'An account with this email already exists' });
+      return;
+    }
+    sendError(res, error);
+  }
+});
+
 router.get('/member-profiles/:identifier', async (req, res) => {
   try {
     const { rows: profileRows } = await query(
@@ -700,6 +747,8 @@ router.get('/member-profiles/:identifier', async (req, res) => {
           tm.team_id,
           tm.position_title,
           tm.is_head,
+          tm.is_lead,
+          tm.permissions,
           tm.joined_at,
           json_build_object(
             'id', t.id,
@@ -710,7 +759,7 @@ router.get('/member-profiles/:identifier', async (req, res) => {
         FROM team_members tm
         JOIN teams t ON t.id = tm.team_id
         WHERE tm.user_id = $1
-        ORDER BY tm.is_head DESC, tm.joined_at ASC
+        ORDER BY tm.is_head DESC, tm.is_lead DESC, tm.joined_at ASC
       `,
       [profile.user_id]
     );
@@ -785,6 +834,9 @@ router.get('/team-memberships/me', requireAuth, async (req, res) => {
           tm.id,
           tm.team_id,
           tm.position_title,
+          tm.is_head,
+          tm.is_lead,
+          tm.permissions,
           tm.joined_at,
           json_build_object(
             'id', t.id,

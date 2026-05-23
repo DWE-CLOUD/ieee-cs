@@ -466,6 +466,20 @@ router.delete('/users/:userId/roles/admin', requireAdmin, async (req, res) => {
   }
 });
 
+router.delete('/users/:userId', requireAdmin, async (req, res) => {
+  if (req.params.userId === req.viewer.user.id) {
+    res.status(400).json({ error: 'You cannot delete your own account from here' });
+    return;
+  }
+
+  try {
+    await query('DELETE FROM users WHERE id = $1', [req.params.userId]);
+    res.json({ ok: true });
+  } catch (error) {
+    sendError(res, error);
+  }
+});
+
 router.get('/team-managers/:userId', requireAdmin, async (req, res) => {
   try {
     const { rows } = await query(
@@ -594,6 +608,8 @@ router.post('/team-members', requireAuth, async (req, res) => {
   const userId = req.body?.user_id || null;
   const positionTitle = String(req.body?.position_title || '').trim();
   const nextIsHead = Boolean(req.body?.is_head);
+  const nextIsLead = Boolean(req.body?.is_lead);
+  const nextPermissions = parseArray(req.body?.permissions);
 
   if (!teamId || !userId || !positionTitle) {
     res.status(400).json({ error: 'user_id, team_id, and position_title are required' });
@@ -613,15 +629,17 @@ router.post('/team-members', requireAuth, async (req, res) => {
 
       const { rows } = await client.query(
         `
-          INSERT INTO team_members (user_id, team_id, position_title, is_head)
-          VALUES ($1, $2, $3, $4)
+          INSERT INTO team_members (user_id, team_id, position_title, is_head, is_lead, permissions)
+          VALUES ($1, $2, $3, $4, $5, $6)
           ON CONFLICT (user_id, team_id)
           DO UPDATE SET
             position_title = EXCLUDED.position_title,
-            is_head = EXCLUDED.is_head
+            is_head = EXCLUDED.is_head,
+            is_lead = EXCLUDED.is_lead,
+            permissions = EXCLUDED.permissions
           RETURNING *
         `,
-        [userId, teamId, positionTitle, nextIsHead]
+        [userId, teamId, positionTitle, nextIsHead, nextIsLead, nextPermissions]
       );
 
       return rows[0];
@@ -642,16 +660,47 @@ router.patch('/team-members/:id', requireAuth, async (req, res) => {
       return;
     }
 
+    const hasHead = Object.prototype.hasOwnProperty.call(req.body, 'is_head');
     const nextIsHead = Boolean(req.body.is_head);
+    const hasLead = Object.prototype.hasOwnProperty.call(req.body, 'is_lead');
+    const hasPermissions = Object.prototype.hasOwnProperty.call(req.body, 'permissions');
+    const hasPositionTitle = Object.prototype.hasOwnProperty.call(req.body, 'position_title');
+    const nextIsLead = Boolean(req.body.is_lead);
+    const nextPermissions = parseArray(req.body.permissions);
+    const nextPositionTitle = String(req.body.position_title || '').trim();
+
+    if (hasPositionTitle && !nextPositionTitle) {
+      res.status(400).json({ error: 'Position title cannot be empty' });
+      return;
+    }
+
     await withTransaction(async (client) => {
       if (nextIsHead) {
         await client.query('UPDATE team_members SET is_head = false WHERE team_id = $1', [member.team_id]);
       }
 
-      await client.query('UPDATE team_members SET is_head = $2 WHERE id = $1', [
+      await client.query(
+        `
+          UPDATE team_members
+          SET
+            is_head = CASE WHEN $2 THEN $3 ELSE is_head END,
+            is_lead = CASE WHEN $4 THEN $5 ELSE is_lead END,
+            permissions = CASE WHEN $6 THEN $7 ELSE permissions END,
+            position_title = CASE WHEN $8 THEN $9 ELSE position_title END
+          WHERE id = $1
+        `,
+        [
         req.params.id,
-        nextIsHead,
-      ]);
+          hasHead,
+          nextIsHead,
+          hasLead,
+          nextIsLead,
+          hasPermissions,
+          nextPermissions,
+          hasPositionTitle,
+          nextPositionTitle,
+        ]
+      );
     });
     res.json({ ok: true });
   } catch (error) {

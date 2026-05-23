@@ -12,6 +12,7 @@ import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import MagicLogin from "./pages/MagicLogin";
 import Profile from "./pages/Profile";
+import MemberPageEditor from "./pages/MemberPageEditor";
 import ResumeEditor from "./pages/ResumeEditor";
 import Admin from "./pages/Admin";
 import Gallery from "./pages/Gallery";
@@ -37,6 +38,7 @@ const App = () => (
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/magic-login" element={<MagicLogin />} />
             <Route path="/profile" element={<Profile />} />
+            <Route path="/member-editor" element={<MemberPageEditor />} />
             <Route path="/resume" element={<ResumeEditor />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="/gallery" element={<Gallery />} />

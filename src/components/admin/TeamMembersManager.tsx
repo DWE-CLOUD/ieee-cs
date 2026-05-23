@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { Users, Loader2, UserX, Download, FileSpreadsheet, Crown, UserPlus } from 'lucide-react';
+import { Users, Loader2, UserX, Download, FileSpreadsheet, Crown, UserPlus, ShieldCheck } from 'lucide-react';
 import { api } from '@/lib/api';
 
 interface ApplicationResponse {
@@ -14,6 +14,8 @@ interface TeamMember {
   team_id: string;
   position_title: string;
   is_head: boolean;
+  is_lead: boolean;
+  permissions: string[] | null;
   joined_at: string;
   profiles: {
     display_name: string | null;
@@ -55,7 +57,16 @@ const TeamMembersManager = ({ teams, users, onUpdate }: TeamMembersManagerProps)
     team_id: '',
     position_title: '',
     is_head: false,
+    is_lead: false,
+    permissions: [] as string[],
   });
+
+  const permissionOptions = [
+    { id: 'manage_members', label: 'Manage members' },
+    { id: 'review_applications', label: 'Review applications' },
+    { id: 'manage_events', label: 'Manage events' },
+    { id: 'manage_gallery', label: 'Manage gallery' },
+  ];
 
   useEffect(() => {
     fetchMembers();
@@ -105,6 +116,8 @@ const TeamMembersManager = ({ teams, users, onUpdate }: TeamMembersManagerProps)
         team_id: assignment.team_id,
         position_title: assignment.position_title.trim(),
         is_head: assignment.is_head,
+        is_lead: assignment.is_lead,
+        permissions: assignment.permissions,
       });
       toast.success(selectedExistingMember ? 'Team member updated' : 'Team member added');
       await fetchMembers();
@@ -114,6 +127,8 @@ const TeamMembersManager = ({ teams, users, onUpdate }: TeamMembersManagerProps)
         user_id: '',
         position_title: '',
         is_head: false,
+        is_lead: false,
+        permissions: [],
       }));
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to save team member');
@@ -148,6 +163,41 @@ const TeamMembersManager = ({ teams, users, onUpdate }: TeamMembersManagerProps)
     }
   };
 
+  const handleToggleLead = async (member: TeamMember) => {
+    const nextIsLead = !member.is_lead;
+
+    try {
+      await api.patch(`/api/admin/team-members/${member.id}`, {
+        is_lead: nextIsLead,
+        permissions: nextIsLead ? member.permissions || [] : [],
+      });
+      toast.success(nextIsLead ? 'Lead enabled' : 'Lead access revoked');
+      fetchMembers();
+      onUpdate();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to update lead access');
+    }
+  };
+
+  const handleTogglePermission = async (member: TeamMember, permission: string) => {
+    const current = member.permissions || [];
+    const nextPermissions = current.includes(permission)
+      ? current.filter((item) => item !== permission)
+      : [...current, permission];
+
+    try {
+      await api.patch(`/api/admin/team-members/${member.id}`, {
+        is_lead: true,
+        permissions: nextPermissions,
+      });
+      toast.success('Lead permissions updated');
+      fetchMembers();
+      onUpdate();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to update permissions');
+    }
+  };
+
   const filteredMembers = selectedTeam === 'all' 
     ? members 
     : members.filter(m => m.team_id === selectedTeam);
@@ -179,6 +229,9 @@ const TeamMembersManager = ({ teams, users, onUpdate }: TeamMembersManagerProps)
         'Phone': member.profiles?.phone || '',
         'Team': getTeamName(member.team_id),
         'Position': member.position_title,
+        'Head': member.is_head ? 'Yes' : 'No',
+        'Lead': member.is_lead ? 'Yes' : 'No',
+        'Permissions': (member.permissions || []).join('; '),
         'Bio': member.profiles?.bio || '',
         'LinkedIn': member.profiles?.linkedin_url || '',
         'GitHub': member.profiles?.github_url || '',
@@ -311,6 +364,42 @@ const TeamMembersManager = ({ teams, users, onUpdate }: TeamMembersManagerProps)
               />
               Make this person head of the selected team
             </label>
+            <label className="flex items-center gap-3 text-sm font-medium text-foreground">
+              <input
+                type="checkbox"
+                checked={assignment.is_lead}
+                onChange={(e) =>
+                  setAssignment((current) => ({ ...current, is_lead: e.target.checked }))
+                }
+                className="w-4 h-4 rounded border-border text-accent focus:ring-accent"
+              />
+              Mark as lead
+            </label>
+            {assignment.is_lead && (
+              <div className="flex flex-wrap gap-2">
+                {permissionOptions.map((permission) => (
+                  <label
+                    key={permission.id}
+                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-background border border-border text-xs text-foreground"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={assignment.permissions.includes(permission.id)}
+                      onChange={(e) =>
+                        setAssignment((current) => ({
+                          ...current,
+                          permissions: e.target.checked
+                            ? [...current.permissions, permission.id]
+                            : current.permissions.filter((item) => item !== permission.id),
+                        }))
+                      }
+                      className="w-3 h-3"
+                    />
+                    {permission.label}
+                  </label>
+                ))}
+              </div>
+            )}
             <button
               onClick={handleAssignMember}
               disabled={isAssigning || users.length === 0 || teams.length === 0}
@@ -393,6 +482,12 @@ const TeamMembersManager = ({ teams, users, onUpdate }: TeamMembersManagerProps)
                       Head
                     </span>
                   )}
+                  {member.is_lead && (
+                    <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-green-500/15 text-green-600 inline-flex items-center gap-1">
+                      <ShieldCheck className="w-3 h-3" />
+                      Lead
+                    </span>
+                  )}
                   <span 
                     className="px-2 py-0.5 rounded-full text-xs font-medium"
                     style={{ 
@@ -409,6 +504,18 @@ const TeamMembersManager = ({ teams, users, onUpdate }: TeamMembersManagerProps)
               </div>
             </div>
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
+              <button
+                onClick={() => handleToggleLead(member)}
+                className={`flex items-center justify-center gap-2 px-3 py-2 rounded-lg transition-colors ${
+                  member.is_lead
+                    ? 'bg-green-500/15 text-green-600 hover:bg-green-500/25'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                }`}
+                title={member.is_lead ? 'Revoke lead' : 'Make lead'}
+              >
+                <ShieldCheck className="w-4 h-4" />
+                <span className="text-sm font-medium">{member.is_lead ? 'Lead' : 'Make Lead'}</span>
+              </button>
               <button
                 onClick={() => handleToggleHead(member)}
                 className={`flex items-center justify-center gap-2 px-3 py-2 rounded-lg transition-colors ${
@@ -429,6 +536,28 @@ const TeamMembersManager = ({ teams, users, onUpdate }: TeamMembersManagerProps)
                 <span className="text-sm font-medium">Remove</span>
               </button>
             </div>
+            {member.is_lead && (
+              <div className="sm:col-span-2 w-full sm:ml-14">
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {permissionOptions.map((permission) => {
+                    const enabled = (member.permissions || []).includes(permission.id);
+                    return (
+                      <button
+                        key={permission.id}
+                        onClick={() => handleTogglePermission(member, permission.id)}
+                        className={`px-3 py-1.5 rounded-full border text-xs font-medium transition-colors ${
+                          enabled
+                            ? 'bg-accent/15 text-accent border-accent/30'
+                            : 'bg-background text-muted-foreground border-border hover:text-foreground'
+                        }`}
+                      >
+                        {permission.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         ))}
         {filteredMembers.length === 0 && (

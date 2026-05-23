@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, User, Phone, FileText, Linkedin, Github, Twitter, Save, Loader2, LogOut, ClipboardList, Camera, Upload, MapPin, Globe, Sparkles, ExternalLink, Palette, Hash, LayoutTemplate, Link as LinkIcon } from 'lucide-react';
+import { ArrowLeft, User, Phone, FileText, Linkedin, Github, Twitter, Save, Loader2, LogOut, ClipboardList, Camera, Upload, MapPin, Globe, Sparkles, ExternalLink, Palette, Hash, LayoutTemplate, Link as LinkIcon, Mail } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import ieeeLogo from '@/assets/ieee-logo.png';
@@ -15,6 +15,7 @@ const Profile = () => {
   const navigate = useNavigate();
   const [isLoaded, setIsLoaded] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isChangingEmail, setIsChangingEmail] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [isMember, setIsMember] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -46,6 +47,10 @@ const Profile = () => {
     linkedin_url: '',
     github_url: '',
     twitter_url: '',
+  });
+  const [emailForm, setEmailForm] = useState({
+    email: '',
+    password: '',
   });
 
   useEffect(() => {
@@ -88,6 +93,10 @@ const Profile = () => {
         github_url: profile.github_url || '',
         twitter_url: profile.twitter_url || '',
       });
+      setEmailForm((current) => ({
+        ...current,
+        email: profile.email || '',
+      }));
     }
   }, [profile]);
 
@@ -146,6 +155,22 @@ const Profile = () => {
     }
 
     setIsSaving(false);
+  };
+
+  const handleChangeEmail = async () => {
+    if (!user) return;
+
+    setIsChangingEmail(true);
+    try {
+      await api.patch('/api/profile/email', emailForm);
+      toast.success('Login email updated');
+      setEmailForm((current) => ({ ...current, password: '' }));
+      await refreshProfile();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to update email');
+    } finally {
+      setIsChangingEmail(false);
+    }
   };
 
   const handleSignOut = async () => {
@@ -688,22 +713,89 @@ const Profile = () => {
                     <FileText className="w-5 h-5 text-accent" />
                   </div>
                   <div>
-                    <h2 className="font-medium text-foreground text-lg">Resume Builder</h2>
+                    <h2 className="font-medium text-foreground text-lg">Member Page Editor</h2>
                     <p className="text-sm text-muted-foreground">
-                      Create a clean member resume in a focused editor.
+                      Design your public member page with a live preview.
                     </p>
                   </div>
                 </div>
                 <Link
-                  to="/resume"
+                  to="/member-editor"
                   className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-foreground text-primary-foreground text-sm font-medium transition-all duration-300 hover:opacity-90"
                 >
-                  Open Editor
+                  Open Page Editor
                   <ExternalLink className="w-4 h-4" />
                 </Link>
               </div>
             </div>
           )}
+
+          {isMember && (
+            <div className="bg-card rounded-2xl md:rounded-3xl border border-border/50 p-5 md:p-8 shadow-elegant mb-6">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center">
+                    <FileText className="w-5 h-5 text-accent" />
+                  </div>
+                  <div>
+                    <h2 className="font-medium text-foreground text-lg">Resume Builder</h2>
+                    <p className="text-sm text-muted-foreground">
+                      Build and export a clean resume in a focused editor.
+                    </p>
+                  </div>
+                </div>
+                <Link
+                  to="/resume"
+                  className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl border border-border text-sm font-medium text-foreground transition-all duration-300 hover:bg-muted"
+                >
+                  Open Resume
+                  <ExternalLink className="w-4 h-4" />
+                </Link>
+              </div>
+            </div>
+          )}
+
+          <div className="bg-card rounded-2xl md:rounded-3xl border border-border/50 p-5 md:p-8 shadow-elegant mb-6">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center">
+                <Mail className="w-5 h-5 text-accent" />
+              </div>
+              <div>
+                <h2 className="font-medium text-foreground text-lg">Login Email</h2>
+                <p className="text-sm text-muted-foreground">Change the email you use to sign in.</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-4 items-end">
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">New Email</label>
+                <input
+                  type="email"
+                  value={emailForm.email}
+                  onChange={(e) => setEmailForm({ ...emailForm, email: e.target.value })}
+                  className="w-full px-4 py-3 rounded-xl border border-border bg-background transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-accent/50"
+                  placeholder="you@example.com"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">Current Password</label>
+                <input
+                  type="password"
+                  value={emailForm.password}
+                  onChange={(e) => setEmailForm({ ...emailForm, password: e.target.value })}
+                  className="w-full px-4 py-3 rounded-xl border border-border bg-background transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-accent/50"
+                  placeholder="Confirm password"
+                />
+              </div>
+              <button
+                onClick={handleChangeEmail}
+                disabled={isChangingEmail || !emailForm.email || !emailForm.password}
+                className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-foreground text-primary-foreground text-sm font-medium transition-all duration-300 hover:opacity-90 disabled:opacity-50"
+              >
+                {isChangingEmail ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                Update Email
+              </button>
+            </div>
+          </div>
 
           {/* My Applications Section */}
           <div className="bg-card rounded-2xl md:rounded-3xl border border-border/50 p-5 md:p-8 shadow-elegant mb-6">
