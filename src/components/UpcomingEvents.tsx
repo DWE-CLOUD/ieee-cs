@@ -23,6 +23,7 @@ interface Event {
 const UpcomingEvents = () => {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const content = useHomeContent();
 
   useEffect(() => {
@@ -31,8 +32,12 @@ const UpcomingEvents = () => {
 
   const fetchEvents = async () => {
     try {
+      setError(null);
       const data = await api.get<Event[]>('/api/events/upcoming');
       setEvents(data);
+    } catch (error) {
+      setEvents([]);
+      setError(error instanceof Error ? error.message : 'Failed to load events');
     } finally {
       setLoading(false);
     }
@@ -57,39 +62,6 @@ const UpcomingEvents = () => {
       default: return 'bg-muted text-muted-foreground border-border';
     }
   };
-
-  // Placeholder events for empty state
-  const placeholderEvents = [
-    {
-      id: "1",
-      title: "Web Dev Workshop",
-      description: "Learn React & Next.js from scratch with hands-on projects",
-      date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-      location: "CS Lab 204",
-      type: "Workshop",
-      is_featured: true,
-    },
-    {
-      id: "2",
-      title: "HackFest 2025",
-      description: "24-hour hackathon with amazing prizes and mentorship",
-      date: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
-      location: "Main Auditorium",
-      type: "Hackathon",
-      is_featured: false,
-    },
-    {
-      id: "3",
-      title: "AI/ML Bootcamp",
-      description: "Introduction to machine learning and neural networks",
-      date: new Date(Date.now() + 21 * 24 * 60 * 60 * 1000).toISOString(),
-      location: "Online",
-      type: "Bootcamp",
-      is_featured: false,
-    },
-  ];
-
-  const displayEvents = events.length > 0 ? events : placeholderEvents;
 
   return (
     <section id="events" className="px-8 py-20 bg-gradient-to-b from-background to-secondary/30 relative overflow-hidden">
@@ -131,9 +103,20 @@ const UpcomingEvents = () => {
               </div>
             ))}
           </div>
+        ) : error ? (
+          <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-6 text-center">
+            <p className="text-sm font-medium text-destructive">Events could not be loaded.</p>
+            <p className="mt-2 text-sm text-muted-foreground">{error}</p>
+          </div>
+        ) : events.length === 0 ? (
+          <div className="rounded-2xl border border-border/50 bg-card p-8 text-center">
+            <p className="text-sm text-muted-foreground">
+              No upcoming events are available from the backend yet.
+            </p>
+          </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {displayEvents.map((event, index) => (
+            {events.map((event, index) => (
               <div
                 key={event.id}
                 className={`group relative bg-card rounded-2xl border transition-all duration-500 hover:shadow-elegant cursor-pointer overflow-hidden ${
@@ -235,7 +218,7 @@ const UpcomingEvents = () => {
         </SmartLink>
 
         {/* Empty state hint for admins */}
-        {events.length === 0 && !loading && (
+        {events.length === 0 && !loading && !error && (
           <p className="text-center text-muted-foreground text-sm mt-6">
             {content.upcomingEvents.emptyHint}
           </p>

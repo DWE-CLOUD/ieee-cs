@@ -217,7 +217,7 @@ export const defaultHomeContent: HomePageContent = {
     description: 'Join us for workshops, hackathons, and networking opportunities',
     viewAllLabel: 'View all events',
     viewAllHref: '/#events',
-    emptyHint: 'These are placeholder events. Add real events from the admin dashboard.',
+    emptyHint: 'Add upcoming events from the admin dashboard to show them here.',
   },
   footer: {
     description:
