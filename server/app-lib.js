@@ -58,6 +58,47 @@ export const allowedOrigins = new Set(
 
 export const isAdminEmail = (email) => config.adminEmails.includes(normalizeEmail(email));
 
+export const TEAM_PERMISSIONS = {
+  MANAGE_TEAM: 'manage_team',
+  ADD_MEMBERS: 'add_members',
+  MANAGE_MEMBERS: 'manage_members',
+  REVIEW_APPLICATIONS: 'review_applications',
+  MANAGE_EVENTS: 'manage_events',
+  MANAGE_GALLERY: 'manage_gallery',
+};
+
+const FULL_TEAM_PERMISSIONS = [
+  TEAM_PERMISSIONS.MANAGE_TEAM,
+  TEAM_PERMISSIONS.ADD_MEMBERS,
+  TEAM_PERMISSIONS.MANAGE_MEMBERS,
+  TEAM_PERMISSIONS.REVIEW_APPLICATIONS,
+];
+
+const normalizePermissions = (permissions) =>
+  Array.isArray(permissions) ? [...new Set(permissions.filter(Boolean))] : [];
+
+const mergeTeamAccess = (teams) => {
+  const accessByTeam = new Map();
+
+  for (const team of teams) {
+    const existing = accessByTeam.get(team.team_id);
+    const permissions = normalizePermissions(team.permissions);
+
+    if (!existing) {
+      accessByTeam.set(team.team_id, {
+        team_id: team.team_id,
+        team_name: team.team_name,
+        permissions,
+      });
+      continue;
+    }
+
+    existing.permissions = normalizePermissions([...existing.permissions, ...permissions]);
+  }
+
+  return [...accessByTeam.values()].sort((a, b) => a.team_name.localeCompare(b.team_name));
+};
+
 export const ensureDirectories = async () => {
   await fs.mkdir(path.join(publicUploadsDir, 'avatars'), { recursive: true });
   await fs.mkdir(path.join(publicUploadsDir, 'gallery'), { recursive: true });
@@ -150,25 +191,37 @@ export const loadViewer = async (userId) => {
   );
   const { rows: managedTeams } = await query(
     `
-      SELECT t.id AS team_id, t.name AS team_name
+      SELECT
+        t.id AS team_id,
+        t.name AS team_name,
+        $2::text[] AS permissions
       FROM team_managers tm
       JOIN teams t ON t.id = tm.team_id
       WHERE tm.user_id = $1
     `,
-    [userId]
+    [userId, FULL_TEAM_PERMISSIONS]
   );
   const { rows: headedTeams } = await query(
     `
-      SELECT t.id AS team_id, t.name AS team_name
+      SELECT
+        t.id AS team_id,
+        t.name AS team_name,
+        CASE
+          WHEN tm.is_head = true THEN $2::text[]
+          WHEN tm.is_lead = true AND COALESCE(cardinality(tm.permissions), 0) = 0
+            THEN ARRAY['add_members']::text[]
+          ELSE COALESCE(tm.permissions, ARRAY[]::text[])
+        END AS permissions
       FROM team_members tm
       JOIN teams t ON t.id = tm.team_id
       WHERE tm.user_id = $1
         AND (
           tm.is_head = true
-          OR tm.permissions @> ARRAY['manage_members']::text[]
+          OR tm.is_lead = true
+          OR COALESCE(cardinality(tm.permissions), 0) > 0
         )
     `,
-    [userId]
+    [userId, FULL_TEAM_PERMISSIONS]
   );
   const { rows: collaborators } = await query(
     'SELECT 1 FROM gallery_collaborators WHERE user_id = $1',
@@ -176,9 +229,7 @@ export const loadViewer = async (userId) => {
   );
 
   const roleList = roles.map((row) => row.role);
-  const teamAccess = [...managedTeams, ...headedTeams].filter(
-    (team, index, list) => list.findIndex((item) => item.team_id === team.team_id) === index
-  );
+  const teamAccess = mergeTeamAccess([...managedTeams, ...headedTeams]);
 
   return {
     user: {
@@ -220,7 +271,7 @@ export const loadViewer = async (userId) => {
     isAdmin: roleList.includes('admin'),
     isManager: roleList.includes('manager') || teamAccess.length > 0,
     isGalleryCollaborator: collaborators.length > 0,
-    managedTeams: teamAccess.sort((a, b) => a.team_name.localeCompare(b.team_name)),
+    managedTeams: teamAccess,
   };
 };
 
@@ -246,15 +297,56 @@ export const requireAdmin = (req, res, next) => {
 };
 
 export const requireAdminOrGallery = (req, res, next) => {
-  if (!req.viewer?.isAdmin && !req.viewer?.isGalleryCollaborator) {
+  if (
+    !req.viewer?.isAdmin &&
+    !req.viewer?.isGalleryCollaborator &&
+    !hasAnyTeamPermission(req.viewer, TEAM_PERMISSIONS.MANAGE_GALLERY)
+  ) {
     res.status(403).json({ error: 'Gallery access required' });
     return;
   }
   next();
 };
 
+export const hasTeamPermission = (viewer, teamId, permission) =>
+  Boolean(
+    viewer?.isAdmin ||
+      viewer?.managedTeams.some(
+        (team) =>
+          team.team_id === teamId &&
+          (team.permissions?.includes(TEAM_PERMISSIONS.MANAGE_TEAM) ||
+            team.permissions?.includes(permission) ||
+            (permission === TEAM_PERMISSIONS.ADD_MEMBERS &&
+              team.permissions?.includes(TEAM_PERMISSIONS.MANAGE_MEMBERS)) ||
+            (permission === TEAM_PERMISSIONS.REVIEW_APPLICATIONS &&
+              team.permissions?.includes(TEAM_PERMISSIONS.MANAGE_MEMBERS)))
+      )
+  );
+
+export const hasAnyTeamPermission = (viewer, permission) =>
+  Boolean(
+    viewer?.isAdmin ||
+      viewer?.managedTeams.some(
+        (team) =>
+          team.permissions?.includes(permission) ||
+          (permission === TEAM_PERMISSIONS.ADD_MEMBERS &&
+            team.permissions?.includes(TEAM_PERMISSIONS.MANAGE_MEMBERS)) ||
+          (permission === TEAM_PERMISSIONS.REVIEW_APPLICATIONS &&
+            team.permissions?.includes(TEAM_PERMISSIONS.MANAGE_MEMBERS))
+      )
+  );
+
 export const canManageTeam = (viewer, teamId) =>
-  Boolean(viewer?.isAdmin || viewer?.managedTeams.some((team) => team.team_id === teamId));
+  hasTeamPermission(viewer, teamId, TEAM_PERMISSIONS.MANAGE_TEAM);
+
+export const canAddTeamMembers = (viewer, teamId) =>
+  hasTeamPermission(viewer, teamId, TEAM_PERMISSIONS.ADD_MEMBERS);
+
+export const canManageTeamMembers = (viewer, teamId) =>
+  hasTeamPermission(viewer, teamId, TEAM_PERMISSIONS.MANAGE_MEMBERS);
+
+export const canReviewTeamApplications = (viewer, teamId) =>
+  hasTeamPermission(viewer, teamId, TEAM_PERMISSIONS.REVIEW_APPLICATIONS);
 
 export const ensurePositionAccess = async (viewer, positionId) => {
   const { rows } = await query('SELECT team_id FROM positions WHERE id = $1', [positionId]);
@@ -262,15 +354,25 @@ export const ensurePositionAccess = async (viewer, positionId) => {
   return teamId ? canManageTeam(viewer, teamId) : Boolean(viewer?.isAdmin);
 };
 
+export const ensurePositionApplicationAccess = async (viewer, positionId) => {
+  const { rows } = await query('SELECT team_id FROM positions WHERE id = $1', [positionId]);
+  const teamId = rows[0]?.team_id;
+  return teamId ? canReviewTeamApplications(viewer, teamId) : Boolean(viewer?.isAdmin);
+};
+
 export const buildApplicationsForViewer = async (viewer) => {
   const params = [];
   let whereClause = '';
 
   if (!viewer.isAdmin) {
-    const managedTeamIds = viewer.managedTeams.map((team) => team.team_id);
+    const reviewableTeamIds = viewer.managedTeams
+      .filter((team) =>
+        hasTeamPermission(viewer, team.team_id, TEAM_PERMISSIONS.REVIEW_APPLICATIONS)
+      )
+      .map((team) => team.team_id);
     params.push(viewer.user.id);
-    if (managedTeamIds.length > 0) {
-      params.push(managedTeamIds);
+    if (reviewableTeamIds.length > 0) {
+      params.push(reviewableTeamIds);
       whereClause = `
         WHERE a.user_id = $1
           OR p.team_id = ANY($2::uuid[])

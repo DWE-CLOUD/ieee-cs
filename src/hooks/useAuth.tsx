@@ -45,6 +45,7 @@ interface Profile {
 interface ManagedTeam {
   team_id: string;
   team_name: string;
+  permissions?: string[];
 }
 
 interface SessionPayload {

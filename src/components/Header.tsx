@@ -8,7 +8,7 @@ const Header = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isHidden, setIsHidden] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { user, profile, isAdmin, loading } = useAuth();
+  const { user, profile, isAdmin, isManager, loading } = useAuth();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -77,7 +77,7 @@ const Header = () => {
 
         {/* Right side actions */}
         <div className="flex items-center gap-3">
-          {isAdmin && (
+          {(isAdmin || isManager) && (
             <Link
               to="/admin"
               className="hidden lg:block text-sm font-medium text-accent hover:text-accent/80 transition-colors duration-300"
@@ -150,7 +150,7 @@ const Header = () => {
               </a>
             )
           ))}
-          {isAdmin && (
+          {(isAdmin || isManager) && (
             <Link
               to="/admin"
               onClick={() => setIsMobileMenuOpen(false)}

@@ -3,7 +3,9 @@ import path from 'node:path';
 import { query, withTransaction } from '../db.js';
 import {
   buildAbsoluteUrl,
+  canAddTeamMembers,
   canManageTeam,
+  canManageTeamMembers,
   clearSessionCookie,
   ensurePositionAccess,
   generatePlainToken,
@@ -1054,7 +1056,12 @@ router.post('/applications', requireAuth, upload.any(), async (req, res) => {
 
 router.get('/manager/team-members', requireAuth, async (req, res) => {
   const teamId = String(req.query.teamId || '');
-  if (!teamId || !canManageTeam(req.viewer, teamId)) {
+  if (
+    !teamId ||
+    (!canManageTeam(req.viewer, teamId) &&
+      !canAddTeamMembers(req.viewer, teamId) &&
+      !canManageTeamMembers(req.viewer, teamId))
+  ) {
     res.status(403).json({ error: 'Team access denied' });
     return;
   }

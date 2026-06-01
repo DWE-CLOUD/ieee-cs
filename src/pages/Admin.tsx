@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { 
   ArrowLeft, Briefcase, Users, UserCheck, FileText, Plus, Edit2, Trash2, 
@@ -94,7 +94,7 @@ interface UserRole {
 }
 
 const Admin = () => {
-  const { user, isAdmin, isManager, loading } = useAuth();
+  const { user, isAdmin, isManager, managedTeams, loading } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabType>('positions');
   const [isLoaded, setIsLoaded] = useState(false);
@@ -121,11 +121,44 @@ const Admin = () => {
     setIsLoaded(true);
   }, []);
 
+  const hasTeamPermission = useCallback((permission: string) =>
+    isAdmin ||
+    managedTeams.some((team) => {
+      const permissions = team.permissions || [];
+      return (
+        permissions.includes('manage_team') ||
+        permissions.includes(permission) ||
+        (permission === 'add_members' && permissions.includes('manage_members')) ||
+        (permission === 'review_applications' && permissions.includes('manage_members'))
+      );
+    }), [isAdmin, managedTeams]);
+
+  const hasLeadPermission = useCallback((permission: string) =>
+    isAdmin || managedTeams.some((team) => (team.permissions || []).includes(permission)),
+    [isAdmin, managedTeams]
+  );
+
   useEffect(() => {
-    if (!isAdmin && isManager && !['members', 'applications'].includes(activeTab)) {
-      setActiveTab('members');
+    if (isAdmin || !isManager) return;
+
+    const allowedTabs: TabType[] = [];
+    if (hasTeamPermission('add_members') || hasTeamPermission('manage_members')) {
+      allowedTabs.push('members');
     }
-  }, [activeTab, isAdmin, isManager]);
+    if (hasTeamPermission('review_applications')) {
+      allowedTabs.push('applications');
+    }
+    if (hasLeadPermission('manage_events')) {
+      allowedTabs.push('events');
+    }
+    if (hasLeadPermission('manage_gallery')) {
+      allowedTabs.push('gallery');
+    }
+
+    if (!allowedTabs.includes(activeTab)) {
+      setActiveTab(allowedTabs[0] || 'applications');
+    }
+  }, [activeTab, hasLeadPermission, hasTeamPermission, isAdmin, isManager]);
 
   useEffect(() => {
     if (!loading && (!user || (!isAdmin && !isManager))) {
@@ -254,7 +287,22 @@ const Admin = () => {
     { id: 'applications' as TabType, label: 'Applications', icon: FileText, count: applications.filter(a => a.status === 'pending').length },
     { id: 'users' as TabType, label: 'Users', icon: UserCheck, count: users.length },
     { id: 'system' as TabType, label: 'System', icon: Activity, count: null },
-  ].filter((tab) => isAdmin || ['members', 'applications'].includes(tab.id));
+  ].filter((tab) => {
+    if (isAdmin) return true;
+    if (tab.id === 'members') {
+      return hasTeamPermission('add_members') || hasTeamPermission('manage_members');
+    }
+    if (tab.id === 'applications') {
+      return hasTeamPermission('review_applications');
+    }
+    if (tab.id === 'events') {
+      return hasLeadPermission('manage_events');
+    }
+    if (tab.id === 'gallery') {
+      return hasLeadPermission('manage_gallery');
+    }
+    return false;
+  });
 
   const filteredUsers = users.filter((u) => {
     const query = userSearch.trim().toLowerCase();

@@ -234,7 +234,7 @@ const Profile = () => {
             />
           </Link>
           <div className="flex items-center gap-3 md:gap-4">
-            {isAdmin && (
+            {(isAdmin || isManager) && (
               <Link
                 to="/admin"
                 className="hidden sm:inline text-sm text-accent hover:text-accent/80 transition-colors"
@@ -322,6 +322,11 @@ const Profile = () => {
                   {isAdmin && (
                     <span className="inline-block px-2 py-0.5 text-xs font-medium bg-accent/15 text-accent rounded-full">
                       Admin
+                    </span>
+                  )}
+                  {!isAdmin && isManager && (
+                    <span className="inline-block px-2 py-0.5 text-xs font-medium bg-accent/15 text-accent rounded-full">
+                      Team Lead
                     </span>
                   )}
                 </div>

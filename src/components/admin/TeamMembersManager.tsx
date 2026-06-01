@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { toast } from 'sonner';
 import { Users, Loader2, UserX, Download, FileSpreadsheet, Crown, UserPlus, ShieldCheck, ChevronDown, Eye, X, Settings } from 'lucide-react';
 import { api } from '@/lib/api';
+import { useAuth } from '@/hooks/useAuth';
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -57,6 +58,7 @@ interface TeamMembersManagerProps {
 }
 
 const TeamMembersManager = ({ teams, users, onUpdate }: TeamMembersManagerProps) => {
+  const { isAdmin, managedTeams } = useAuth();
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedTeam, setSelectedTeam] = useState<string>('all');
@@ -75,21 +77,37 @@ const TeamMembersManager = ({ teams, users, onUpdate }: TeamMembersManagerProps)
   });
 
   const permissionOptions = [
+    { id: 'add_members', label: 'Add members' },
     { id: 'manage_members', label: 'Manage members' },
     { id: 'review_applications', label: 'Review applications' },
     { id: 'manage_events', label: 'Manage events' },
     { id: 'manage_gallery', label: 'Manage gallery' },
   ];
 
+  const hasPermissionForTeam = (teamId: string, permission: string) => {
+    if (isAdmin) return true;
+    const team = managedTeams.find((item) => item.team_id === teamId);
+    const permissions = team?.permissions || [];
+    return (
+      permissions.includes('manage_team') ||
+      permissions.includes(permission) ||
+      (permission === 'add_members' && permissions.includes('manage_members'))
+    );
+  };
+
+  const canAddForTeam = (teamId: string) => hasPermissionForTeam(teamId, 'add_members');
+  const canManageForTeam = (teamId: string) => hasPermissionForTeam(teamId, 'manage_members');
+  const assignableTeams = teams.filter((team) => canAddForTeam(team.id));
+
   useEffect(() => {
     fetchMembers();
   }, []);
 
   useEffect(() => {
-    if (!assignment.team_id && teams.length > 0) {
-      setAssignment((current) => ({ ...current, team_id: teams[0].id }));
+    if (!assignment.team_id && assignableTeams.length > 0) {
+      setAssignment((current) => ({ ...current, team_id: assignableTeams[0].id }));
     }
-  }, [assignment.team_id, teams]);
+  }, [assignment.team_id, assignableTeams]);
 
   useEffect(() => {
     if (!assignment.user_id && users.length > 0) {
@@ -121,6 +139,11 @@ const TeamMembersManager = ({ teams, users, onUpdate }: TeamMembersManagerProps)
       return;
     }
 
+    if (selectedExistingMember && !canManageForTeam(assignment.team_id)) {
+      toast.error('Manage members permission is required to update existing members');
+      return;
+    }
+
     setIsAssigning(true);
 
     try {
@@ -128,9 +151,9 @@ const TeamMembersManager = ({ teams, users, onUpdate }: TeamMembersManagerProps)
         user_id: assignment.user_id,
         team_id: assignment.team_id,
         position_title: assignment.position_title.trim(),
-        is_head: assignment.is_head,
-        is_lead: assignment.is_lead,
-        permissions: assignment.permissions,
+        is_head: canManageForTeam(assignment.team_id) ? assignment.is_head : false,
+        is_lead: canManageForTeam(assignment.team_id) ? assignment.is_lead : false,
+        permissions: canManageForTeam(assignment.team_id) ? assignment.permissions : [],
       });
       toast.success(selectedExistingMember ? 'Team member updated' : 'Team member added');
       await fetchMembers();
@@ -178,11 +201,15 @@ const TeamMembersManager = ({ teams, users, onUpdate }: TeamMembersManagerProps)
 
   const handleToggleLead = async (member: TeamMember) => {
     const nextIsLead = !member.is_lead;
+    const nextPermissions =
+      nextIsLead && (!member.permissions || member.permissions.length === 0)
+        ? ['add_members']
+        : member.permissions || [];
 
     try {
       await api.patch(`/api/admin/team-members/${member.id}`, {
         is_lead: nextIsLead,
-        permissions: nextIsLead ? member.permissions || [] : [],
+        permissions: nextIsLead ? nextPermissions : [],
       });
       toast.success(nextIsLead ? 'Lead enabled' : 'Lead access revoked');
       fetchMembers();
@@ -330,6 +357,7 @@ const TeamMembersManager = ({ teams, users, onUpdate }: TeamMembersManagerProps)
 
   return (
     <div>
+      {assignableTeams.length > 0 && (
       <div className="p-4 md:p-6 border-b border-border/50 bg-muted/20">
         <div className="flex items-start gap-3 mb-4">
           <div className="w-10 h-10 rounded-2xl bg-accent/15 text-accent flex items-center justify-center">
@@ -338,7 +366,7 @@ const TeamMembersManager = ({ teams, users, onUpdate }: TeamMembersManagerProps)
           <div>
             <h3 className="font-medium text-foreground">Add or Update Team Member</h3>
             <p className="text-sm text-muted-foreground">
-              Assign any registered user to a team directly and optionally mark them as the current head.
+              Assign registered users to teams you can manage.
             </p>
           </div>
         </div>
@@ -368,7 +396,7 @@ const TeamMembersManager = ({ teams, users, onUpdate }: TeamMembersManagerProps)
               className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-accent/50"
             >
               <option value="">Select team</option>
-              {teams.map((team) => (
+              {assignableTeams.map((team) => (
                 <option key={team.id} value={team.id}>
                   {team.name}
                 </option>
@@ -390,6 +418,7 @@ const TeamMembersManager = ({ teams, users, onUpdate }: TeamMembersManagerProps)
           </div>
 
           <div className="flex flex-col justify-end gap-3">
+            {canManageForTeam(assignment.team_id) && (
             <label className="flex items-center gap-3 text-sm font-medium text-foreground">
               <input
                 type="checkbox"
@@ -401,18 +430,29 @@ const TeamMembersManager = ({ teams, users, onUpdate }: TeamMembersManagerProps)
               />
               Make this person head of the selected team
             </label>
+            )}
+            {canManageForTeam(assignment.team_id) && (
             <label className="flex items-center gap-3 text-sm font-medium text-foreground">
               <input
                 type="checkbox"
                 checked={assignment.is_lead}
                 onChange={(e) =>
-                  setAssignment((current) => ({ ...current, is_lead: e.target.checked }))
+                  setAssignment((current) => ({
+                    ...current,
+                    is_lead: e.target.checked,
+                    permissions: e.target.checked
+                      ? current.permissions.length === 0
+                        ? ['add_members']
+                        : current.permissions
+                      : [],
+                  }))
                 }
                 className="w-4 h-4 rounded border-border text-accent focus:ring-accent"
               />
               Mark as lead
             </label>
-            {assignment.is_lead && (
+            )}
+            {canManageForTeam(assignment.team_id) && assignment.is_lead && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button className="inline-flex w-full items-center justify-between gap-2 px-3 py-2 rounded-lg border border-border bg-background text-sm text-foreground hover:bg-muted transition-colors">
@@ -444,21 +484,30 @@ const TeamMembersManager = ({ teams, users, onUpdate }: TeamMembersManagerProps)
             )}
             <button
               onClick={handleAssignMember}
-              disabled={isAssigning || users.length === 0 || teams.length === 0}
+              disabled={
+                isAssigning ||
+                users.length === 0 ||
+                assignableTeams.length === 0 ||
+                Boolean(selectedExistingMember && !canManageForTeam(assignment.team_id))
+              }
               className="inline-flex w-full items-center justify-center gap-2 px-4 py-2 rounded-lg bg-accent text-accent-foreground text-sm font-medium transition-colors hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isAssigning ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
-              {selectedExistingMember ? 'Update Member' : 'Add Member'}
+              {selectedExistingMember && canManageForTeam(assignment.team_id) ? 'Update Member' : 'Add Member'}
             </button>
           </div>
         </div>
 
         {selectedExistingMember ? (
           <p className="mt-4 text-sm text-muted-foreground">
-            This user is already in {getTeamName(selectedExistingMember.team_id)}. Saving here will update their role and head status.
+            This user is already in {getTeamName(selectedExistingMember.team_id)}.
+            {canManageForTeam(selectedExistingMember.team_id)
+              ? ' Saving here will update their role and access.'
+              : ' Manage members permission is required to update existing members.'}
           </p>
         ) : null}
       </div>
+      )}
 
       {/* Filter and Download controls */}
       <div className="p-4 md:p-6 border-b border-border/50">
@@ -570,6 +619,7 @@ const TeamMembersManager = ({ teams, users, onUpdate }: TeamMembersManagerProps)
               </div>
             </div>
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
+              {canManageForTeam(member.team_id) && (
               <button
                 onClick={(event) => {
                   event.stopPropagation();
@@ -585,6 +635,8 @@ const TeamMembersManager = ({ teams, users, onUpdate }: TeamMembersManagerProps)
                 <ShieldCheck className="w-4 h-4" />
                 <span className="text-sm font-medium">{member.is_lead ? 'Lead' : 'Make Lead'}</span>
               </button>
+              )}
+              {canManageForTeam(member.team_id) && (
               <button
                 onClick={(event) => {
                   event.stopPropagation();
@@ -600,6 +652,7 @@ const TeamMembersManager = ({ teams, users, onUpdate }: TeamMembersManagerProps)
                 <Crown className="w-4 h-4" />
                 <span className="text-sm font-medium">{member.is_head ? 'Head' : 'Make Head'}</span>
               </button>
+              )}
               <button
                 onClick={(event) => {
                   event.stopPropagation();
@@ -610,7 +663,7 @@ const TeamMembersManager = ({ teams, users, onUpdate }: TeamMembersManagerProps)
                 <Eye className="w-4 h-4" />
                 <span className="text-sm font-medium">Details</span>
               </button>
-              {member.is_lead && (
+              {member.is_lead && canManageForTeam(member.team_id) && (
                 <button
                   onClick={(event) => {
                     event.stopPropagation();
@@ -622,6 +675,7 @@ const TeamMembersManager = ({ teams, users, onUpdate }: TeamMembersManagerProps)
                   <span className="text-sm font-medium">Settings</span>
                 </button>
               )}
+              {canManageForTeam(member.team_id) && (
               <button
                 onClick={(event) => {
                   event.stopPropagation();
@@ -632,6 +686,7 @@ const TeamMembersManager = ({ teams, users, onUpdate }: TeamMembersManagerProps)
                 <UserX className="w-4 h-4" />
                 <span className="text-sm font-medium">Remove</span>
               </button>
+              )}
             </div>
           </div>
         ))}

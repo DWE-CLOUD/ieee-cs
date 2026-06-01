@@ -12,6 +12,7 @@ import { Plus, Pencil, Trash2, Upload, Image, Loader2, Star, StarOff, FolderPlus
 import { cn } from "@/lib/utils";
 import GalleryCollaborators from "@/components/admin/GalleryCollaborators";
 import { api } from "@/lib/api";
+import { useAuth } from "@/hooks/useAuth";
 
 interface GalleryImage {
   id: string;
@@ -41,6 +42,7 @@ interface Album {
 const categories = ["Event", "Hackathon", "Workshop", "Meetup", "Exhibition", "Award Ceremony", "Team Building"];
 
 const GalleryManager = () => {
+  const { isAdmin } = useAuth();
   const [activeTab, setActiveTab] = useState("albums");
   const [showCollaborators, setShowCollaborators] = useState(false);
   const [albums, setAlbums] = useState<Album[]>([]);
@@ -564,14 +566,16 @@ const GalleryManager = () => {
           <p className="text-sm text-muted-foreground">Create albums and manage event photos</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button 
-            variant="outline" 
-            className="gap-2"
-            onClick={() => setShowCollaborators(!showCollaborators)}
-          >
-            <Users className="w-4 h-4" />
-            Collaborators
-          </Button>
+          {isAdmin && (
+            <Button
+              variant="outline"
+              className="gap-2"
+              onClick={() => setShowCollaborators(!showCollaborators)}
+            >
+              <Users className="w-4 h-4" />
+              Collaborators
+            </Button>
+          )}
         <Dialog open={isAlbumDialogOpen} onOpenChange={(open) => {
           setIsAlbumDialogOpen(open);
           if (!open) resetAlbumForm();

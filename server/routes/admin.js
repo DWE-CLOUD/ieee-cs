@@ -3,9 +3,14 @@ import express from 'express';
 import { query, withTransaction } from '../db.js';
 import { getDiagnosticsSnapshot } from '../diagnostics.js';
 import {
+  TEAM_PERMISSIONS,
   buildApplicationsForViewer,
+  canAddTeamMembers,
   canManageTeam,
+  canManageTeamMembers,
   ensurePositionAccess,
+  ensurePositionApplicationAccess,
+  hasAnyTeamPermission,
   parseArray,
   requireAdmin,
   requireAdminOrGallery,
@@ -22,7 +27,8 @@ const router = express.Router();
 router.get('/dashboard', requireAuth, async (req, res) => {
   try {
     const applications = await buildApplicationsForViewer(req.viewer);
-    const canSeeUsers = req.viewer.isAdmin;
+    const canSeeUsers =
+      req.viewer.isAdmin || hasAnyTeamPermission(req.viewer, TEAM_PERMISSIONS.ADD_MEMBERS);
     const users = canSeeUsers
       ? (
           await query(
@@ -35,7 +41,11 @@ router.get('/dashboard', requireAuth, async (req, res) => {
         ).rows
       : [];
     const roles = canSeeUsers ? (await query('SELECT user_id, role FROM user_roles')).rows : [];
-    const teams = (await query('SELECT * FROM teams ORDER BY name')).rows;
+    const allTeams = (await query('SELECT * FROM teams ORDER BY name')).rows;
+    const visibleTeamIds = new Set(req.viewer.managedTeams.map((team) => team.team_id));
+    const teams = req.viewer.isAdmin
+      ? allTeams
+      : allTeams.filter((team) => visibleTeamIds.has(team.id));
     const positions = (
       await query(
         `
@@ -51,7 +61,10 @@ router.get('/dashboard', requireAuth, async (req, res) => {
         `
       )
     ).rows;
-    const events = (await query('SELECT * FROM events ORDER BY date ASC')).rows;
+    const events =
+      req.viewer.isAdmin || hasAnyTeamPermission(req.viewer, TEAM_PERMISSIONS.MANAGE_EVENTS)
+        ? (await query('SELECT * FROM events ORDER BY date ASC')).rows
+        : [];
 
     res.json({
       teams,
@@ -62,7 +75,7 @@ router.get('/dashboard', requireAuth, async (req, res) => {
       users: canSeeUsers
         ? users.map((profile) => ({
             ...profile,
-            roles: roles.filter((role) => role.user_id === profile.user_id),
+            roles: req.viewer.isAdmin ? roles.filter((role) => role.user_id === profile.user_id) : [],
           }))
         : [],
       events,
@@ -338,7 +351,15 @@ router.delete('/teams/:id', requireAdmin, async (req, res) => {
   }
 });
 
-router.post('/events', requireAdmin, async (req, res) => {
+const requireEventPermission = (req, res, next) => {
+  if (!req.viewer?.isAdmin && !hasAnyTeamPermission(req.viewer, TEAM_PERMISSIONS.MANAGE_EVENTS)) {
+    res.status(403).json({ error: 'Event access required' });
+    return;
+  }
+  next();
+};
+
+router.post('/events', requireAuth, requireEventPermission, async (req, res) => {
   const data = req.body || {};
   try {
     const { rows } = await query(
@@ -366,7 +387,7 @@ router.post('/events', requireAdmin, async (req, res) => {
   }
 });
 
-router.patch('/events/:id', requireAdmin, async (req, res) => {
+router.patch('/events/:id', requireAuth, requireEventPermission, async (req, res) => {
   const data = req.body || {};
   try {
     const { rows } = await query(
@@ -406,7 +427,7 @@ router.patch('/events/:id', requireAdmin, async (req, res) => {
   }
 });
 
-router.delete('/events/:id', requireAdmin, async (req, res) => {
+router.delete('/events/:id', requireAuth, requireEventPermission, async (req, res) => {
   try {
     await query('DELETE FROM events WHERE id = $1', [req.params.id]);
     res.json({ ok: true });
@@ -426,7 +447,7 @@ router.patch('/applications/:id/status', requireAuth, async (req, res) => {
 
     const canUpdate =
       req.viewer.isAdmin ||
-      (await ensurePositionAccess(req.viewer, application.position_id));
+      (await ensurePositionApplicationAccess(req.viewer, application.position_id));
     if (!canUpdate) {
       res.status(403).json({ error: 'Application access denied' });
       return;
@@ -488,7 +509,7 @@ router.get('/applications/:id/responses', requireAuth, async (req, res) => {
     const canView =
       req.viewer.isAdmin ||
       application.user_id === req.viewer.user.id ||
-      (await ensurePositionAccess(req.viewer, application.position_id));
+      (await ensurePositionApplicationAccess(req.viewer, application.position_id));
     if (!canView) {
       res.status(403).json({ error: 'Application access denied' });
       return;
@@ -522,7 +543,7 @@ router.get('/applications/:id/resume', requireAuth, async (req, res) => {
     const canView =
       req.viewer.isAdmin ||
       application.user_id === req.viewer.user.id ||
-      (await ensurePositionAccess(req.viewer, application.position_id));
+      (await ensurePositionApplicationAccess(req.viewer, application.position_id));
     if (!canView) {
       res.status(403).json({ error: 'Resume access denied' });
       return;
@@ -674,7 +695,12 @@ router.get('/team-members', requireAuth, async (req, res) => {
     ).rows;
 
     if (!req.viewer.isAdmin) {
-      const managedTeamIds = req.viewer.managedTeams.map((team) => team.team_id);
+      const managedTeamIds = req.viewer.managedTeams
+        .filter((team) =>
+          canAddTeamMembers(req.viewer, team.team_id) ||
+          canManageTeamMembers(req.viewer, team.team_id)
+        )
+        .map((team) => team.team_id);
       members = members.filter((member) => managedTeamIds.includes(member.team_id));
     }
 
@@ -718,38 +744,69 @@ router.post('/team-members', requireAuth, async (req, res) => {
   const positionTitle = String(req.body?.position_title || '').trim();
   const nextIsHead = Boolean(req.body?.is_head);
   const nextIsLead = Boolean(req.body?.is_lead);
-  const nextPermissions = parseArray(req.body?.permissions);
+  const requestedPermissions = parseArray(req.body?.permissions);
+  const nextPermissions = nextIsLead
+    ? requestedPermissions.length > 0
+      ? requestedPermissions
+      : [TEAM_PERMISSIONS.ADD_MEMBERS]
+    : [];
 
   if (!teamId || !userId || !positionTitle) {
     res.status(400).json({ error: 'user_id, team_id, and position_title are required' });
     return;
   }
 
-  if (!canManageTeam(req.viewer, teamId)) {
+  if (!canAddTeamMembers(req.viewer, teamId)) {
     res.status(403).json({ error: 'Team access denied' });
     return;
   }
 
   try {
+    const canManageMembers = canManageTeamMembers(req.viewer, teamId);
+    const { rows: existingRows } = await query(
+      'SELECT id FROM team_members WHERE user_id = $1 AND team_id = $2',
+      [userId, teamId]
+    );
+    const existingMember = existingRows[0];
+
+    if (!canManageMembers && existingMember) {
+      res.status(403).json({ error: 'Manage members permission is required to update existing members' });
+      return;
+    }
+
+    if (!canManageMembers && (nextIsHead || nextIsLead || nextPermissions.length > 0)) {
+      res.status(403).json({ error: 'Manage members permission is required to assign elevated member access' });
+      return;
+    }
+
     const member = await withTransaction(async (client) => {
       if (nextIsHead) {
         await client.query('UPDATE team_members SET is_head = false WHERE team_id = $1', [teamId]);
       }
 
-      const { rows } = await client.query(
-        `
-          INSERT INTO team_members (user_id, team_id, position_title, is_head, is_lead, permissions)
-          VALUES ($1, $2, $3, $4, $5, $6)
-          ON CONFLICT (user_id, team_id)
-          DO UPDATE SET
-            position_title = EXCLUDED.position_title,
-            is_head = EXCLUDED.is_head,
-            is_lead = EXCLUDED.is_lead,
-            permissions = EXCLUDED.permissions
-          RETURNING *
-        `,
-        [userId, teamId, positionTitle, nextIsHead, nextIsLead, nextPermissions]
-      );
+      const statement = canManageMembers
+        ? `
+            INSERT INTO team_members (user_id, team_id, position_title, is_head, is_lead, permissions)
+            VALUES ($1, $2, $3, $4, $5, $6)
+            ON CONFLICT (user_id, team_id)
+            DO UPDATE SET
+              position_title = EXCLUDED.position_title,
+              is_head = EXCLUDED.is_head,
+              is_lead = EXCLUDED.is_lead,
+              permissions = EXCLUDED.permissions
+            RETURNING *
+          `
+        : `
+            INSERT INTO team_members (user_id, team_id, position_title, is_head, is_lead, permissions)
+            VALUES ($1, $2, $3, false, false, ARRAY[]::text[])
+            ON CONFLICT (user_id, team_id) DO NOTHING
+            RETURNING *
+          `;
+
+      const params = canManageMembers
+        ? [userId, teamId, positionTitle, nextIsHead, nextIsLead, nextPermissions]
+        : [userId, teamId, positionTitle];
+      const { rows } = await client.query(statement, params);
 
       return rows[0];
     });
@@ -764,7 +821,7 @@ router.patch('/team-members/:id', requireAuth, async (req, res) => {
   try {
     const { rows } = await query('SELECT team_id FROM team_members WHERE id = $1', [req.params.id]);
     const member = rows[0];
-    if (!member || !canManageTeam(req.viewer, member.team_id)) {
+    if (!member || !canManageTeamMembers(req.viewer, member.team_id)) {
       res.status(403).json({ error: 'Team access denied' });
       return;
     }
@@ -775,7 +832,13 @@ router.patch('/team-members/:id', requireAuth, async (req, res) => {
     const hasPermissions = Object.prototype.hasOwnProperty.call(req.body, 'permissions');
     const hasPositionTitle = Object.prototype.hasOwnProperty.call(req.body, 'position_title');
     const nextIsLead = Boolean(req.body.is_lead);
-    const nextPermissions = parseArray(req.body.permissions);
+    const requestedPermissions = parseArray(req.body.permissions);
+    const nextPermissions =
+      hasLead && !nextIsLead
+        ? []
+        : hasLead && nextIsLead && requestedPermissions.length === 0
+          ? [TEAM_PERMISSIONS.ADD_MEMBERS]
+          : requestedPermissions;
     const nextPositionTitle = String(req.body.position_title || '').trim();
 
     if (hasPositionTitle && !nextPositionTitle) {
@@ -821,7 +884,7 @@ router.delete('/team-members/:id', requireAuth, async (req, res) => {
   try {
     const { rows } = await query('SELECT team_id FROM team_members WHERE id = $1', [req.params.id]);
     const member = rows[0];
-    if (!member || !canManageTeam(req.viewer, member.team_id)) {
+    if (!member || !canManageTeamMembers(req.viewer, member.team_id)) {
       res.status(403).json({ error: 'Team access denied' });
       return;
     }
