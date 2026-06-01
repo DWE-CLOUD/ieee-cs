@@ -83,17 +83,20 @@ const mergeTeamAccess = (teams) => {
   for (const team of teams) {
     const existing = accessByTeam.get(team.team_id);
     const permissions = normalizePermissions(team.permissions);
+    const isHead = Boolean(team.is_head);
 
     if (!existing) {
       accessByTeam.set(team.team_id, {
         team_id: team.team_id,
         team_name: team.team_name,
         permissions,
+        is_head: isHead,
       });
       continue;
     }
 
     existing.permissions = normalizePermissions([...existing.permissions, ...permissions]);
+    existing.is_head = existing.is_head || isHead;
   }
 
   return [...accessByTeam.values()].sort((a, b) => a.team_name.localeCompare(b.team_name));
@@ -194,7 +197,8 @@ export const loadViewer = async (userId) => {
       SELECT
         t.id AS team_id,
         t.name AS team_name,
-        $2::text[] AS permissions
+        $2::text[] AS permissions,
+        false AS is_head
       FROM team_managers tm
       JOIN teams t ON t.id = tm.team_id
       WHERE tm.user_id = $1
@@ -211,7 +215,8 @@ export const loadViewer = async (userId) => {
           WHEN tm.is_lead = true AND COALESCE(cardinality(tm.permissions), 0) = 0
             THEN ARRAY['add_members']::text[]
           ELSE COALESCE(tm.permissions, ARRAY[]::text[])
-        END AS permissions
+        END AS permissions,
+        tm.is_head
       FROM team_members tm
       JOIN teams t ON t.id = tm.team_id
       WHERE tm.user_id = $1

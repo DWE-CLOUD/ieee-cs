@@ -178,6 +178,19 @@ CREATE TABLE IF NOT EXISTS team_members (
 ALTER TABLE team_members ADD COLUMN IF NOT EXISTS is_lead BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE team_members ADD COLUMN IF NOT EXISTS permissions TEXT[] DEFAULT '{}';
 
+CREATE TABLE IF NOT EXISTS team_member_audit_logs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+  actor_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+  target_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+  target_member_id UUID,
+  action TEXT NOT NULL,
+  summary TEXT NOT NULL,
+  before_state JSONB,
+  after_state JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS gallery_collaborators (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
@@ -220,6 +233,9 @@ CREATE INDEX IF NOT EXISTS idx_team_managers_user_id ON team_managers(user_id);
 CREATE INDEX IF NOT EXISTS idx_team_members_team_id ON team_members(team_id);
 CREATE INDEX IF NOT EXISTS idx_team_members_user_id ON team_members(user_id);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_team_head_unique ON team_members(team_id) WHERE is_head = true;
+CREATE INDEX IF NOT EXISTS idx_team_member_audit_logs_team_created ON team_member_audit_logs(team_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_team_member_audit_logs_actor ON team_member_audit_logs(actor_user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_team_member_audit_logs_target ON team_member_audit_logs(target_user_id, created_at DESC);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_profiles_public_slug_unique ON profiles (lower(public_slug)) WHERE public_slug IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_gallery_images_album_id ON gallery_images(album_id);
 CREATE INDEX IF NOT EXISTS idx_auth_tokens_user_id ON auth_tokens(user_id);

@@ -46,6 +46,7 @@ interface ManagedTeam {
   team_id: string;
   team_name: string;
   permissions?: string[];
+  is_head?: boolean;
 }
 
 interface SessionPayload {

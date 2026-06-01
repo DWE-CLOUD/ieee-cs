@@ -1,7 +1,7 @@
 import { useState, useEffect, ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { toast } from 'sonner';
-import { Users, Loader2, UserX, Download, FileSpreadsheet, Crown, UserPlus, ShieldCheck, ChevronDown, Eye, X, Settings } from 'lucide-react';
+import { Users, Loader2, UserX, Download, FileSpreadsheet, Crown, UserPlus, ShieldCheck, ChevronDown, Eye, X, Settings, History } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
 import {
@@ -45,6 +45,27 @@ interface Team {
   color: string;
 }
 
+interface TeamMemberAuditLog {
+  id: string;
+  team_id: string;
+  actor_user_id: string | null;
+  target_user_id: string | null;
+  target_member_id: string | null;
+  action: string;
+  summary: string;
+  before_state: Record<string, unknown> | null;
+  after_state: Record<string, unknown> | null;
+  created_at: string;
+  actor: {
+    display_name: string | null;
+    email: string | null;
+  } | null;
+  target: {
+    display_name: string | null;
+    email: string | null;
+  } | null;
+}
+
 interface AdminUser {
   user_id: string;
   display_name: string | null;
@@ -66,6 +87,10 @@ const TeamMembersManager = ({ teams, users, onUpdate }: TeamMembersManagerProps)
   const [exportDetail, setExportDetail] = useState('full');
   const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
   const [selectedLeadSettings, setSelectedLeadSettings] = useState<TeamMember | null>(null);
+  const [selectedAuditTeam, setSelectedAuditTeam] = useState('');
+  const [auditLogs, setAuditLogs] = useState<TeamMemberAuditLog[]>([]);
+  const [isAuditLoading, setIsAuditLoading] = useState(false);
+  const [showAuditLogs, setShowAuditLogs] = useState(false);
   const [isAssigning, setIsAssigning] = useState(false);
   const [assignment, setAssignment] = useState({
     user_id: '',
@@ -97,7 +122,14 @@ const TeamMembersManager = ({ teams, users, onUpdate }: TeamMembersManagerProps)
 
   const canAddForTeam = (teamId: string) => hasPermissionForTeam(teamId, 'add_members');
   const canManageForTeam = (teamId: string) => hasPermissionForTeam(teamId, 'manage_members');
+  const canAdministerForTeam = (teamId: string) =>
+    isAdmin || Boolean(managedTeams.find((item) => item.team_id === teamId)?.is_head);
+  const isElevatedMember = (member: TeamMember | null) =>
+    Boolean(member?.is_head || member?.is_lead || (member?.permissions || []).length > 0);
+  const canEditMember = (member: TeamMember | null) =>
+    Boolean(member && (canAdministerForTeam(member.team_id) || (canManageForTeam(member.team_id) && !isElevatedMember(member))));
   const assignableTeams = teams.filter((team) => canAddForTeam(team.id));
+  const auditTeams = teams.filter((team) => canAdministerForTeam(team.id));
 
   useEffect(() => {
     fetchMembers();
@@ -114,6 +146,12 @@ const TeamMembersManager = ({ teams, users, onUpdate }: TeamMembersManagerProps)
       setAssignment((current) => ({ ...current, user_id: users[0].user_id }));
     }
   }, [assignment.user_id, users]);
+
+  useEffect(() => {
+    if (!selectedAuditTeam && auditTeams.length > 0) {
+      setSelectedAuditTeam(auditTeams[0].id);
+    }
+  }, [auditTeams, selectedAuditTeam]);
 
   const fetchMembers = async () => {
     setIsLoading(true);
@@ -133,14 +171,32 @@ const TeamMembersManager = ({ teams, users, onUpdate }: TeamMembersManagerProps)
       (member) => member.user_id === assignment.user_id && member.team_id === assignment.team_id
     ) || null;
 
+  const fetchAuditLogs = async () => {
+    if (!selectedAuditTeam) return;
+
+    setIsAuditLoading(true);
+    setShowAuditLogs(true);
+
+    try {
+      const logs = await api.get<TeamMemberAuditLog[]>(
+        `/api/admin/team-member-audit-logs?teamId=${encodeURIComponent(selectedAuditTeam)}`
+      );
+      setAuditLogs(logs);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to fetch lead activity logs');
+    } finally {
+      setIsAuditLoading(false);
+    }
+  };
+
   const handleAssignMember = async () => {
     if (!assignment.user_id || !assignment.team_id || !assignment.position_title.trim()) {
       toast.error('Select a user, team, and position title');
       return;
     }
 
-    if (selectedExistingMember && !canManageForTeam(assignment.team_id)) {
-      toast.error('Manage members permission is required to update existing members');
+    if (selectedExistingMember && !canEditMember(selectedExistingMember)) {
+      toast.error('Only the team head or an admin can update heads or leads');
       return;
     }
 
@@ -151,9 +207,9 @@ const TeamMembersManager = ({ teams, users, onUpdate }: TeamMembersManagerProps)
         user_id: assignment.user_id,
         team_id: assignment.team_id,
         position_title: assignment.position_title.trim(),
-        is_head: canManageForTeam(assignment.team_id) ? assignment.is_head : false,
-        is_lead: canManageForTeam(assignment.team_id) ? assignment.is_lead : false,
-        permissions: canManageForTeam(assignment.team_id) ? assignment.permissions : [],
+        is_head: canAdministerForTeam(assignment.team_id) ? assignment.is_head : false,
+        is_lead: canAdministerForTeam(assignment.team_id) ? assignment.is_lead : false,
+        permissions: canAdministerForTeam(assignment.team_id) ? assignment.permissions : [],
       });
       toast.success(selectedExistingMember ? 'Team member updated' : 'Team member added');
       await fetchMembers();
@@ -418,7 +474,7 @@ const TeamMembersManager = ({ teams, users, onUpdate }: TeamMembersManagerProps)
           </div>
 
           <div className="flex flex-col justify-end gap-3">
-            {canManageForTeam(assignment.team_id) && (
+            {canAdministerForTeam(assignment.team_id) && (
             <label className="flex items-center gap-3 text-sm font-medium text-foreground">
               <input
                 type="checkbox"
@@ -431,7 +487,7 @@ const TeamMembersManager = ({ teams, users, onUpdate }: TeamMembersManagerProps)
               Make this person head of the selected team
             </label>
             )}
-            {canManageForTeam(assignment.team_id) && (
+            {canAdministerForTeam(assignment.team_id) && (
             <label className="flex items-center gap-3 text-sm font-medium text-foreground">
               <input
                 type="checkbox"
@@ -452,7 +508,7 @@ const TeamMembersManager = ({ teams, users, onUpdate }: TeamMembersManagerProps)
               Mark as lead
             </label>
             )}
-            {canManageForTeam(assignment.team_id) && assignment.is_lead && (
+            {canAdministerForTeam(assignment.team_id) && assignment.is_lead && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button className="inline-flex w-full items-center justify-between gap-2 px-3 py-2 rounded-lg border border-border bg-background text-sm text-foreground hover:bg-muted transition-colors">
@@ -488,12 +544,12 @@ const TeamMembersManager = ({ teams, users, onUpdate }: TeamMembersManagerProps)
                 isAssigning ||
                 users.length === 0 ||
                 assignableTeams.length === 0 ||
-                Boolean(selectedExistingMember && !canManageForTeam(assignment.team_id))
+                Boolean(selectedExistingMember && !canEditMember(selectedExistingMember))
               }
               className="inline-flex w-full items-center justify-center gap-2 px-4 py-2 rounded-lg bg-accent text-accent-foreground text-sm font-medium transition-colors hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isAssigning ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
-              {selectedExistingMember && canManageForTeam(assignment.team_id) ? 'Update Member' : 'Add Member'}
+              {selectedExistingMember && canEditMember(selectedExistingMember) ? 'Update Member' : 'Add Member'}
             </button>
           </div>
         </div>
@@ -501,12 +557,88 @@ const TeamMembersManager = ({ teams, users, onUpdate }: TeamMembersManagerProps)
         {selectedExistingMember ? (
           <p className="mt-4 text-sm text-muted-foreground">
             This user is already in {getTeamName(selectedExistingMember.team_id)}.
-            {canManageForTeam(selectedExistingMember.team_id)
+            {canEditMember(selectedExistingMember)
               ? ' Saving here will update their role and access.'
-              : ' Manage members permission is required to update existing members.'}
+              : ' Only the team head or an admin can update heads or leads.'}
           </p>
         ) : null}
       </div>
+      )}
+
+      {auditTeams.length > 0 && (
+        <div className="p-4 md:p-6 border-b border-border/50">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-muted text-foreground flex items-center justify-center">
+                <History className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-medium text-foreground">Lead Activity Logs</h3>
+                <p className="text-sm text-muted-foreground">
+                  Review member changes made by leads in teams you head.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid gap-2 sm:grid-cols-[1fr_auto] lg:w-auto">
+              <select
+                value={selectedAuditTeam}
+                onChange={(event) => {
+                  setSelectedAuditTeam(event.target.value);
+                  setShowAuditLogs(false);
+                  setAuditLogs([]);
+                }}
+                className="w-full min-w-48 px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-accent/50"
+              >
+                {auditTeams.map((team) => (
+                  <option key={team.id} value={team.id}>
+                    {team.name}
+                  </option>
+                ))}
+              </select>
+              <button
+                onClick={fetchAuditLogs}
+                disabled={!selectedAuditTeam || isAuditLoading}
+                className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-border text-sm font-medium text-foreground transition-colors hover:bg-muted disabled:opacity-50"
+              >
+                {isAuditLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <History className="w-4 h-4" />}
+                View Logs
+              </button>
+            </div>
+          </div>
+
+          {showAuditLogs && (
+            <div className="mt-4 rounded-2xl border border-border/50 overflow-hidden">
+              {isAuditLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-5 h-5 animate-spin text-accent" />
+                </div>
+              ) : auditLogs.length > 0 ? (
+                <div className="divide-y divide-border/50">
+                  {auditLogs.map((log) => (
+                    <div key={log.id} className="p-4 bg-background">
+                      <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-foreground">{log.summary}</p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {log.actor?.display_name || log.actor?.email || 'Lead'} • {log.action.replace(/_/g, ' ')}
+                          </p>
+                        </div>
+                        <time className="text-xs text-muted-foreground">
+                          {new Date(log.created_at).toLocaleString()}
+                        </time>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-6 text-center text-sm text-muted-foreground">
+                  No lead changes recorded for this team yet.
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       )}
 
       {/* Filter and Download controls */}
@@ -619,7 +751,7 @@ const TeamMembersManager = ({ teams, users, onUpdate }: TeamMembersManagerProps)
               </div>
             </div>
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
-              {canManageForTeam(member.team_id) && (
+              {canAdministerForTeam(member.team_id) && (
               <button
                 onClick={(event) => {
                   event.stopPropagation();
@@ -636,7 +768,7 @@ const TeamMembersManager = ({ teams, users, onUpdate }: TeamMembersManagerProps)
                 <span className="text-sm font-medium">{member.is_lead ? 'Lead' : 'Make Lead'}</span>
               </button>
               )}
-              {canManageForTeam(member.team_id) && (
+              {canAdministerForTeam(member.team_id) && (
               <button
                 onClick={(event) => {
                   event.stopPropagation();
@@ -663,7 +795,7 @@ const TeamMembersManager = ({ teams, users, onUpdate }: TeamMembersManagerProps)
                 <Eye className="w-4 h-4" />
                 <span className="text-sm font-medium">Details</span>
               </button>
-              {member.is_lead && canManageForTeam(member.team_id) && (
+              {member.is_lead && canAdministerForTeam(member.team_id) && (
                 <button
                   onClick={(event) => {
                     event.stopPropagation();
@@ -675,7 +807,7 @@ const TeamMembersManager = ({ teams, users, onUpdate }: TeamMembersManagerProps)
                   <span className="text-sm font-medium">Settings</span>
                 </button>
               )}
-              {canManageForTeam(member.team_id) && (
+              {canEditMember(member) && (
               <button
                 onClick={(event) => {
                   event.stopPropagation();

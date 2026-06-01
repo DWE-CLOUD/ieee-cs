@@ -24,6 +24,112 @@ import {
 
 const router = express.Router();
 
+const elevatedMember = (member) =>
+  Boolean(member?.is_head || member?.is_lead || (member?.permissions || []).length > 0);
+
+const getTeamMembership = async (userId, teamId) => {
+  if (!userId || !teamId) return null;
+
+  const { rows } = await query(
+    `
+      SELECT id, user_id, team_id, position_title, is_head, is_lead, permissions
+      FROM team_members
+      WHERE user_id = $1 AND team_id = $2
+    `,
+    [userId, teamId]
+  );
+
+  return rows[0] || null;
+};
+
+const canAdministerTeamAccess = async (viewer, teamId) => {
+  if (viewer?.isAdmin) return true;
+  const membership = await getTeamMembership(viewer?.user?.id, teamId);
+  return Boolean(membership?.is_head);
+};
+
+const getTeamMemberForAudit = async (memberId) => {
+  const { rows } = await query(
+    `
+      SELECT
+        tm.id,
+        tm.user_id,
+        tm.team_id,
+        tm.position_title,
+        tm.is_head,
+        tm.is_lead,
+        tm.permissions,
+        p.display_name,
+        p.email
+      FROM team_members tm
+      LEFT JOIN profiles p ON p.user_id = tm.user_id
+      WHERE tm.id = $1
+    `,
+    [memberId]
+  );
+
+  return rows[0] || null;
+};
+
+const getAuditState = (member) =>
+  member
+    ? {
+        member_id: member.id,
+        user_id: member.user_id,
+        display_name: member.display_name || null,
+        email: member.email || null,
+        team_id: member.team_id,
+        position_title: member.position_title,
+        is_head: Boolean(member.is_head),
+        is_lead: Boolean(member.is_lead),
+        permissions: member.permissions || [],
+      }
+    : null;
+
+const recordLeadMemberAudit = ({
+  viewer,
+  actorMembership,
+  teamId,
+  targetUserId,
+  targetMemberId,
+  action,
+  summary,
+  beforeState,
+  afterState,
+}) => {
+  if (viewer?.isAdmin || !actorMembership?.is_lead || actorMembership?.is_head) {
+    return;
+  }
+
+  void query(
+    `
+      INSERT INTO team_member_audit_logs (
+        team_id,
+        actor_user_id,
+        target_user_id,
+        target_member_id,
+        action,
+        summary,
+        before_state,
+        after_state
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8::jsonb)
+    `,
+    [
+      teamId,
+      viewer.user.id,
+      targetUserId || null,
+      targetMemberId || null,
+      action,
+      summary,
+      beforeState ? JSON.stringify(beforeState) : null,
+      afterState ? JSON.stringify(afterState) : null,
+    ]
+  ).catch((error) => {
+    console.error('Failed to record lead audit log', error);
+  });
+};
+
 router.get('/dashboard', requireAuth, async (req, res) => {
   try {
     const applications = await buildApplicationsForViewer(req.viewer);
@@ -763,8 +869,24 @@ router.post('/team-members', requireAuth, async (req, res) => {
 
   try {
     const canManageMembers = canManageTeamMembers(req.viewer, teamId);
+    const actorMembership = await getTeamMembership(req.viewer.user.id, teamId);
+    const canAdministerAccess = req.viewer.isAdmin || Boolean(actorMembership?.is_head);
     const { rows: existingRows } = await query(
-      'SELECT id FROM team_members WHERE user_id = $1 AND team_id = $2',
+      `
+        SELECT
+          tm.id,
+          tm.user_id,
+          tm.team_id,
+          tm.position_title,
+          tm.is_head,
+          tm.is_lead,
+          tm.permissions,
+          p.display_name,
+          p.email
+        FROM team_members tm
+        LEFT JOIN profiles p ON p.user_id = tm.user_id
+        WHERE tm.user_id = $1 AND tm.team_id = $2
+      `,
       [userId, teamId]
     );
     const existingMember = existingRows[0];
@@ -774,8 +896,13 @@ router.post('/team-members', requireAuth, async (req, res) => {
       return;
     }
 
-    if (!canManageMembers && (nextIsHead || nextIsLead || nextPermissions.length > 0)) {
-      res.status(403).json({ error: 'Manage members permission is required to assign elevated member access' });
+    if (!canAdministerAccess && existingMember && elevatedMember(existingMember)) {
+      res.status(403).json({ error: 'Only the team head or an admin can update heads, leads, or their permissions' });
+      return;
+    }
+
+    if (!canAdministerAccess && (nextIsHead || nextIsLead || nextPermissions.length > 0)) {
+      res.status(403).json({ error: 'Only the team head or an admin can assign elevated member access' });
       return;
     }
 
@@ -811,6 +938,20 @@ router.post('/team-members', requireAuth, async (req, res) => {
       return rows[0];
     });
 
+    recordLeadMemberAudit({
+      viewer: req.viewer,
+      actorMembership,
+      teamId,
+      targetUserId: userId,
+      targetMemberId: member?.id || existingMember?.id || null,
+      action: existingMember ? 'update_member' : 'add_member',
+      summary: existingMember
+        ? `Updated ${existingMember.display_name || existingMember.email || 'a member'}`
+        : 'Added a team member',
+      beforeState: getAuditState(existingMember),
+      afterState: getAuditState(member),
+    });
+
     res.status(201).json(member);
   } catch (error) {
     sendError(res, error);
@@ -819,12 +960,14 @@ router.post('/team-members', requireAuth, async (req, res) => {
 
 router.patch('/team-members/:id', requireAuth, async (req, res) => {
   try {
-    const { rows } = await query('SELECT team_id FROM team_members WHERE id = $1', [req.params.id]);
-    const member = rows[0];
+    const member = await getTeamMemberForAudit(req.params.id);
     if (!member || !canManageTeamMembers(req.viewer, member.team_id)) {
       res.status(403).json({ error: 'Team access denied' });
       return;
     }
+
+    const actorMembership = await getTeamMembership(req.viewer.user.id, member.team_id);
+    const canAdministerAccess = req.viewer.isAdmin || Boolean(actorMembership?.is_head);
 
     const hasHead = Object.prototype.hasOwnProperty.call(req.body, 'is_head');
     const nextIsHead = Boolean(req.body.is_head);
@@ -846,12 +989,22 @@ router.patch('/team-members/:id', requireAuth, async (req, res) => {
       return;
     }
 
-    await withTransaction(async (client) => {
+    if (!canAdministerAccess && elevatedMember(member)) {
+      res.status(403).json({ error: 'Only the team head or an admin can update heads, leads, or their permissions' });
+      return;
+    }
+
+    if (!canAdministerAccess && (hasHead || hasLead || hasPermissions)) {
+      res.status(403).json({ error: 'Only the team head or an admin can change head, lead, or permission access' });
+      return;
+    }
+
+    const updatedMember = await withTransaction(async (client) => {
       if (nextIsHead) {
         await client.query('UPDATE team_members SET is_head = false WHERE team_id = $1', [member.team_id]);
       }
 
-      await client.query(
+      const { rows } = await client.query(
         `
           UPDATE team_members
           SET
@@ -860,9 +1013,10 @@ router.patch('/team-members/:id', requireAuth, async (req, res) => {
             permissions = CASE WHEN $6 THEN $7 ELSE permissions END,
             position_title = CASE WHEN $8 THEN $9 ELSE position_title END
           WHERE id = $1
+          RETURNING *
         `,
         [
-        req.params.id,
+          req.params.id,
           hasHead,
           nextIsHead,
           hasLead,
@@ -873,7 +1027,22 @@ router.patch('/team-members/:id', requireAuth, async (req, res) => {
           nextPositionTitle,
         ]
       );
+
+      return rows[0];
     });
+
+    recordLeadMemberAudit({
+      viewer: req.viewer,
+      actorMembership,
+      teamId: member.team_id,
+      targetUserId: member.user_id,
+      targetMemberId: member.id,
+      action: 'update_member',
+      summary: `Updated ${member.display_name || member.email || 'a member'}`,
+      beforeState: getAuditState(member),
+      afterState: getAuditState({ ...member, ...updatedMember }),
+    });
+
     res.json({ ok: true });
   } catch (error) {
     sendError(res, error);
@@ -882,15 +1051,79 @@ router.patch('/team-members/:id', requireAuth, async (req, res) => {
 
 router.delete('/team-members/:id', requireAuth, async (req, res) => {
   try {
-    const { rows } = await query('SELECT team_id FROM team_members WHERE id = $1', [req.params.id]);
-    const member = rows[0];
+    const member = await getTeamMemberForAudit(req.params.id);
     if (!member || !canManageTeamMembers(req.viewer, member.team_id)) {
       res.status(403).json({ error: 'Team access denied' });
       return;
     }
 
+    const actorMembership = await getTeamMembership(req.viewer.user.id, member.team_id);
+    const canAdministerAccess = req.viewer.isAdmin || Boolean(actorMembership?.is_head);
+
+    if (!canAdministerAccess && elevatedMember(member)) {
+      res.status(403).json({ error: 'Only the team head or an admin can remove heads or leads' });
+      return;
+    }
+
     await query('DELETE FROM team_members WHERE id = $1', [req.params.id]);
+
+    recordLeadMemberAudit({
+      viewer: req.viewer,
+      actorMembership,
+      teamId: member.team_id,
+      targetUserId: member.user_id,
+      targetMemberId: member.id,
+      action: 'remove_member',
+      summary: `Removed ${member.display_name || member.email || 'a member'} from the team`,
+      beforeState: getAuditState(member),
+      afterState: null,
+    });
+
     res.json({ ok: true });
+  } catch (error) {
+    sendError(res, error);
+  }
+});
+
+router.get('/team-member-audit-logs', requireAuth, async (req, res) => {
+  const teamId = String(req.query.teamId || '');
+  const limit = Math.min(Math.max(Number(req.query.limit) || 50, 1), 100);
+
+  if (!teamId) {
+    res.status(400).json({ error: 'teamId is required' });
+    return;
+  }
+
+  try {
+    const canViewLogs = req.viewer.isAdmin || (await canAdministerTeamAccess(req.viewer, teamId));
+    if (!canViewLogs) {
+      res.status(403).json({ error: 'Only the team head or an admin can view lead activity logs' });
+      return;
+    }
+
+    const { rows } = await query(
+      `
+        SELECT
+          logs.*,
+          json_build_object(
+            'display_name', actor_profile.display_name,
+            'email', actor_profile.email
+          ) AS actor,
+          json_build_object(
+            'display_name', target_profile.display_name,
+            'email', target_profile.email
+          ) AS target
+        FROM team_member_audit_logs logs
+        LEFT JOIN profiles actor_profile ON actor_profile.user_id = logs.actor_user_id
+        LEFT JOIN profiles target_profile ON target_profile.user_id = logs.target_user_id
+        WHERE logs.team_id = $1
+        ORDER BY logs.created_at DESC
+        LIMIT $2
+      `,
+      [teamId, limit]
+    );
+
+    res.json(rows);
   } catch (error) {
     sendError(res, error);
   }
