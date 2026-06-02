@@ -15,6 +15,7 @@ import {
 import { Link, useParams } from 'react-router-dom';
 import { api } from '@/lib/api';
 import ieeeLogo from '@/assets/ieee-cs-logo.png';
+import { getOptimizedImageUrl } from '@/lib/images';
 import { normalizeExternalUrl } from '@/lib/urls';
 
 interface TeamMembership {
@@ -177,7 +178,7 @@ const MemberProfile = () => {
         {profile.cover_image_url ? (
           <div className="absolute inset-0">
             <img
-              src={profile.cover_image_url}
+              src={getOptimizedImageUrl(profile.cover_image_url, { width: 1600, quality: 78, fit: 'inside' })}
               alt={profile.display_name || 'Member cover'}
               className="w-full h-full object-cover"
             />
@@ -196,7 +197,16 @@ const MemberProfile = () => {
             <div className="relative">
               <div className="aspect-[4/5] rounded-[28px] md:rounded-[36px] overflow-hidden border border-white/20 bg-white/10 shadow-2xl backdrop-blur-sm">
                 {profile.avatar_url ? (
-                  <img src={profile.avatar_url} alt={profile.display_name || 'Member avatar'} className="w-full h-full object-cover" />
+                  <img
+                    src={getOptimizedImageUrl(profile.avatar_url, {
+                      width: 640,
+                      height: 800,
+                      quality: 78,
+                      fit: 'cover',
+                    })}
+                    alt={profile.display_name || 'Member avatar'}
+                    className="w-full h-full object-cover"
+                  />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-7xl font-serif text-white/90">
                     {(profile.display_name || 'M')[0].toUpperCase()}

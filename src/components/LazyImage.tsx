@@ -1,5 +1,6 @@
 import { ImgHTMLAttributes, useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
+import { getOptimizedImageUrl } from "@/lib/images";
 
 const TRANSPARENT_PIXEL =
   "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==";
@@ -7,6 +8,7 @@ const TRANSPARENT_PIXEL =
 interface LazyImageProps extends ImgHTMLAttributes<HTMLImageElement> {
   eager?: boolean;
   rootMargin?: string;
+  optimize?: false | Parameters<typeof getOptimizedImageUrl>[1];
 }
 
 const LazyImage = ({
@@ -15,16 +17,23 @@ const LazyImage = ({
   className,
   eager = false,
   rootMargin = "300px",
+  optimize,
   onLoad,
   style,
   ...props
 }: LazyImageProps) => {
   const imageRef = useRef<HTMLImageElement | null>(null);
   const [shouldLoad, setShouldLoad] = useState(eager);
-  const [loaded, setLoaded] = useState(eager);
+  const [loaded, setLoaded] = useState(false);
+  const displaySrc = optimize ? getOptimizedImageUrl(src, optimize) : src;
 
   useEffect(() => {
-    if (!src || shouldLoad) {
+    setShouldLoad(eager);
+    setLoaded(false);
+  }, [displaySrc, eager]);
+
+  useEffect(() => {
+    if (!displaySrc || shouldLoad) {
       return;
     }
 
@@ -50,16 +59,16 @@ const LazyImage = ({
 
     observer.observe(element);
     return () => observer.disconnect();
-  }, [rootMargin, shouldLoad, src]);
+  }, [displaySrc, rootMargin, shouldLoad]);
 
-  if (!src) {
+  if (!displaySrc) {
     return null;
   }
 
   return (
     <img
       ref={imageRef}
-      src={shouldLoad ? src : TRANSPARENT_PIXEL}
+      src={shouldLoad ? displaySrc : TRANSPARENT_PIXEL}
       alt={alt}
       loading={eager ? "eager" : "lazy"}
       decoding="async"

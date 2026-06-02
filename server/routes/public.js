@@ -1,5 +1,8 @@
 import express from 'express';
+import crypto from 'node:crypto';
+import fs from 'node:fs/promises';
 import path from 'node:path';
+import sharp from 'sharp';
 import { query, withTransaction } from '../db.js';
 import {
   buildAbsoluteUrl,
@@ -14,6 +17,7 @@ import {
   isAdminEmail,
   normalizeEmail,
   parseArray,
+  publicUploadsDir,
   requireAuth,
   resolvePrivatePath,
   sendError,
@@ -36,6 +40,32 @@ const router = express.Router();
 const PASSWORD_RESET_WINDOW_MS = 1000 * 60 * 60;
 const MAGIC_LOGIN_WINDOW_MS = 1000 * 60 * 20;
 const HEX_COLOR_PATTERN = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
+const optimizedImagesDir = path.join(publicUploadsDir, '_optimized');
+
+const clampNumber = (value, fallback, min, max) => {
+  const parsed = Number.parseInt(String(value || ''), 10);
+  if (!Number.isFinite(parsed)) {
+    return fallback;
+  }
+  return Math.min(max, Math.max(min, parsed));
+};
+
+const resolvePublicUpload = (src) => {
+  const decodedPath = decodeURIComponent(String(src || ''));
+  if (!decodedPath.startsWith('/uploads/')) {
+    return null;
+  }
+
+  const relativePath = decodedPath.replace(/^\/uploads\//, '');
+  const absolutePath = path.resolve(publicUploadsDir, relativePath);
+  const uploadsRoot = path.resolve(publicUploadsDir);
+
+  if (absolutePath !== uploadsRoot && absolutePath.startsWith(`${uploadsRoot}${path.sep}`)) {
+    return absolutePath;
+  }
+
+  return null;
+};
 
 const normalizeColor = (value) => {
   if (!value) {
@@ -110,6 +140,55 @@ const buildMagicLoginUrl = (token) =>
 
 router.get('/health', (_req, res) => {
   res.json({ ok: true });
+});
+
+router.get('/image', async (req, res) => {
+  try {
+    const sourcePath = resolvePublicUpload(req.query.src);
+    if (!sourcePath) {
+      res.status(400).json({ error: 'Invalid image source' });
+      return;
+    }
+
+    const stats = await fs.stat(sourcePath).catch(() => null);
+    if (!stats?.isFile()) {
+      res.status(404).json({ error: 'Image not found' });
+      return;
+    }
+
+    const width = clampNumber(req.query.w, 320, 16, 2400);
+    const height = req.query.h ? clampNumber(req.query.h, undefined, 16, 2400) : undefined;
+    const quality = clampNumber(req.query.q, 78, 35, 92);
+    const fit = req.query.fit === 'inside' ? 'inside' : 'cover';
+    const cacheKey = crypto
+      .createHash('sha1')
+      .update(`${sourcePath}:${stats.mtimeMs}:${stats.size}:${width}:${height || ''}:${quality}:${fit}`)
+      .digest('hex');
+    const cachePath = path.join(optimizedImagesDir, `${cacheKey}.webp`);
+
+    await fs.mkdir(optimizedImagesDir, { recursive: true });
+
+    try {
+      await fs.access(cachePath);
+    } catch {
+      await sharp(sourcePath)
+        .rotate()
+        .resize({
+          width,
+          height,
+          fit,
+          withoutEnlargement: true,
+        })
+        .webp({ quality })
+        .toFile(cachePath);
+    }
+
+    res.setHeader('Cache-Control', 'public, max-age=2592000, immutable');
+    res.setHeader('Content-Type', 'image/webp');
+    res.sendFile(cachePath);
+  } catch (error) {
+    sendError(res, error);
+  }
 });
 
 router.post('/visits', async (req, res) => {
@@ -531,6 +610,12 @@ router.get('/teams-with-members', async (_req, res) => {
     const { rows: teams } = await query('SELECT * FROM teams ORDER BY name');
     const { rows: members } = await query(
       `
+        WITH deduped_team_members AS (
+          SELECT DISTINCT ON (team_id, user_id)
+            *
+          FROM team_members
+          ORDER BY team_id, user_id, is_head DESC, is_lead DESC, joined_at ASC
+        )
         SELECT
           tm.*,
           json_build_object(
@@ -541,22 +626,27 @@ router.get('/teams-with-members', async (_req, res) => {
             'linkedin_url', p.linkedin_url,
             'github_url', p.github_url
           ) AS profiles
-        FROM team_members tm
+        FROM deduped_team_members tm
         LEFT JOIN profiles p ON p.user_id = tm.user_id
         ORDER BY tm.joined_at ASC
       `
     );
 
+    const membersByTeam = members.reduce((acc, member) => {
+      const list = acc.get(member.team_id) || [];
+      list.push(member);
+      acc.set(member.team_id, list);
+      return acc;
+    }, new Map());
+
     res.json(
       teams.map((team) => ({
         ...team,
-        members: members
-          .filter((member) => member.team_id === team.id)
-          .sort(
-            (a, b) =>
-              Number(Boolean(b.is_head)) - Number(Boolean(a.is_head)) ||
-              Number(Boolean(b.is_lead)) - Number(Boolean(a.is_lead))
-          ),
+        members: (membersByTeam.get(team.id) || []).sort(
+          (a, b) =>
+            Number(Boolean(b.is_head)) - Number(Boolean(a.is_head)) ||
+            Number(Boolean(b.is_lead)) - Number(Boolean(a.is_lead))
+        ),
       }))
     );
   } catch (error) {

@@ -1,9 +1,10 @@
 import { Code, Palette, Users, Settings, ArrowUpRight, X, Linkedin, Github, Crown, Loader2 } from "lucide-react";
-import { useState, useRef, useEffect } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "@/lib/api";
 import { useHomeContent } from "@/components/home/HomeContentProvider";
 import { getMemberProfilePath } from "@/lib/members";
+import { getOptimizedImageUrl } from "@/lib/images";
 import LazyImage from "@/components/LazyImage";
 import { normalizeExternalUrl } from "@/lib/urls";
 
@@ -52,6 +53,10 @@ const getBgClass = (color: string) => {
   return { backgroundColor: `${color}20` };
 };
 
+const getMemberCount = (team: Team) => team.members.length;
+
+const getPeopleLabel = (count: number) => `${count} ${count === 1 ? 'person' : 'people'}`;
+
 type AnimationState = 'closed' | 'opening' | 'open' | 'closing';
 
 const TeamSection = () => {
@@ -65,6 +70,43 @@ const TeamSection = () => {
   const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
   const sectionRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [isMobile, setIsMobile] = useState(false);
+  const avatarUrls = useMemo(
+    () =>
+      [
+        ...new Set(
+          teams.flatMap((team) =>
+            team.members.map((member) => member.profiles.avatar_url).filter(Boolean)
+          )
+        ),
+      ] as string[],
+    [teams]
+  );
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const mediaQuery = window.matchMedia('(max-width: 767px)');
+    const updateViewport = () => setIsMobile(mediaQuery.matches);
+    updateViewport();
+    mediaQuery.addEventListener('change', updateViewport);
+    return () => mediaQuery.removeEventListener('change', updateViewport);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || avatarUrls.length === 0) return;
+
+    const preload = () => {
+      avatarUrls.slice(0, 60).forEach((url) => {
+        const image = new Image();
+        image.decoding = 'async';
+        image.src = getOptimizedImageUrl(url, { width: 112, height: 112, quality: 72, fit: 'cover' });
+      });
+    };
+
+    const timeoutId = window.setTimeout(preload, 250);
+    return () => window.clearTimeout(timeoutId);
+  }, [avatarUrls]);
 
   // Scroll-linked horizontal scroll effect (desktop only)
   useEffect(() => {
@@ -72,69 +114,46 @@ const TeamSection = () => {
     const scrollContainer = scrollContainerRef.current;
     if (!section || !scrollContainer || teams.length === 0) return;
 
-    // Only apply on desktop
-    const isMobile = window.innerWidth < 768;
     if (isMobile) return;
 
-    let currentScrollLeft = 0;
-    let targetScrollLeft = 0;
-    let animationId: number;
-
-    const smoothScroll = () => {
-      const diff = targetScrollLeft - currentScrollLeft;
-      // Smooth easing - move 8% of remaining distance each frame
-      currentScrollLeft += diff * 0.08;
-      
-      // Stop animating when close enough
-      if (Math.abs(diff) > 0.5) {
-        scrollContainer.scrollLeft = currentScrollLeft;
-        animationId = requestAnimationFrame(smoothScroll);
-      } else {
-        scrollContainer.scrollLeft = targetScrollLeft;
-      }
-    };
+    let frameId = 0;
 
     const handleScroll = () => {
-      const rect = section.getBoundingClientRect();
-      const sectionTop = rect.top;
-      const sectionHeight = rect.height;
-      const windowHeight = window.innerHeight;
-      
-      // Start when the cards container is fully visible (section top reaches 60% of window)
-      const scrollStart = windowHeight * 0.4;
-      // End when section is mostly scrolled past
-      const scrollEnd = -sectionHeight + windowHeight * 0.6;
-      
-      const maxScroll = scrollContainer.scrollWidth - scrollContainer.clientWidth;
-      
-      if (sectionTop <= scrollStart && sectionTop >= scrollEnd) {
-        const progress = (scrollStart - sectionTop) / (scrollStart - scrollEnd);
-        // Clamp progress between 0 and 1
-        const clampedProgress = Math.max(0, Math.min(1, progress));
-        targetScrollLeft = clampedProgress * maxScroll;
-        
-        // Start smooth animation if not already running
-        cancelAnimationFrame(animationId);
-        animationId = requestAnimationFrame(smoothScroll);
-      } else if (sectionTop > scrollStart) {
-        // Before section - keep at start
-        targetScrollLeft = 0;
-        cancelAnimationFrame(animationId);
-        animationId = requestAnimationFrame(smoothScroll);
-      } else if (sectionTop < scrollEnd) {
-        // After section - keep at end
-        targetScrollLeft = maxScroll;
-        cancelAnimationFrame(animationId);
-        animationId = requestAnimationFrame(smoothScroll);
-      }
+      if (frameId) return;
+
+      frameId = requestAnimationFrame(() => {
+        frameId = 0;
+        const rect = section.getBoundingClientRect();
+        const sectionTop = rect.top;
+        const sectionHeight = rect.height;
+        const windowHeight = window.innerHeight;
+
+        const scrollStart = windowHeight * 0.4;
+        const scrollEnd = -sectionHeight + windowHeight * 0.6;
+        const maxScroll = scrollContainer.scrollWidth - scrollContainer.clientWidth;
+        let nextScrollLeft = scrollContainer.scrollLeft;
+
+        if (sectionTop <= scrollStart && sectionTop >= scrollEnd) {
+          const progress = (scrollStart - sectionTop) / (scrollStart - scrollEnd);
+          nextScrollLeft = Math.max(0, Math.min(1, progress)) * maxScroll;
+        } else if (sectionTop > scrollStart) {
+          nextScrollLeft = 0;
+        } else if (sectionTop < scrollEnd) {
+          nextScrollLeft = maxScroll;
+        }
+
+        scrollContainer.scrollLeft = nextScrollLeft;
+      });
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll();
+
     return () => {
       window.removeEventListener('scroll', handleScroll);
-      cancelAnimationFrame(animationId);
+      cancelAnimationFrame(frameId);
     };
-  }, [teams]);
+  }, [isMobile, teams.length]);
 
   useEffect(() => {
     fetchTeamsWithMembers();
@@ -157,7 +176,7 @@ const TeamSection = () => {
     }
   };
 
-  const openLightbox = (team: Team, index: number) => {
+  const openLightbox = useCallback((team: Team, index: number) => {
     const rect = cardRefs.current[index]?.getBoundingClientRect();
     if (rect) {
       setCardRect(rect);
@@ -171,9 +190,9 @@ const TeamSection = () => {
         });
       });
     }
-  };
+  }, []);
 
-  const closeLightbox = () => {
+  const closeLightbox = useCallback(() => {
     setAnimationState('closing');
     
     setTimeout(() => {
@@ -182,7 +201,7 @@ const TeamSection = () => {
       setCardRect(null);
       document.body.style.overflow = '';
     }, 500);
-  };
+  }, []);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -192,13 +211,12 @@ const TeamSection = () => {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [animationState]);
+  }, [animationState, closeLightbox]);
 
   const getModalStyles = () => {
     if (!cardRect) return {};
 
     const isExpanded = animationState === 'open';
-    const isMobile = window.innerWidth < 768;
     const padding = isMobile ? 16 : 40;
 
     if (isExpanded) {
@@ -344,7 +362,9 @@ const TeamSection = () => {
                                   <LazyImage
                                     src={teamHead.profiles.avatar_url}
                                     alt={teamHead.profiles.display_name || 'Team Head'}
-                                    rootMargin="200px"
+                                    eager={index < 4}
+                                    rootMargin="700px"
+                                    optimize={{ width: 440, height: 550, quality: 76, fit: 'cover' }}
                                     className={`w-full h-full object-cover transition-transform duration-700 ${
                                       isHovered ? 'scale-105' : 'scale-100'
                                     }`}
@@ -441,9 +461,9 @@ const TeamSection = () => {
                         transition-all duration-300
                         ${isHovered ? 'translate-y-0 opacity-100' : '-translate-y-2 opacity-0 md:opacity-0'}
                       `}
-                      style={{ opacity: window.innerWidth < 768 ? 1 : undefined }}
+                      style={{ opacity: isMobile ? 1 : undefined }}
                     >
-                      {team.members.filter((member) => !member.is_head && !member.is_lead).length} members
+                      {getPeopleLabel(getMemberCount(team))}
                     </div>
 
                     {/* Arrow indicator */}
@@ -454,7 +474,7 @@ const TeamSection = () => {
                         transition-all duration-300
                         ${isHovered ? 'translate-x-0 opacity-100' : 'translate-x-4 opacity-0 md:opacity-0'}
                       `}
-                      style={{ opacity: window.innerWidth < 768 ? 1 : undefined, transform: window.innerWidth < 768 ? 'none' : undefined }}
+                      style={{ opacity: isMobile ? 1 : undefined, transform: isMobile ? 'none' : undefined }}
                     >
                       <ArrowUpRight className="w-4 md:w-5 h-4 md:h-5 text-background" />
                     </div>
@@ -601,7 +621,8 @@ const TeamSection = () => {
                                 <LazyImage 
                                   src={teamHead.profiles.avatar_url} 
                                   alt={teamHead.profiles.display_name || 'Head'} 
-                                  rootMargin="200px"
+                                  eager
+                                  optimize={{ width: 96, height: 96, quality: 76, fit: 'cover' }}
                                   className="w-12 h-12 rounded-full object-cover ring-2 ring-accent shadow-lg"
                                 />
                               ) : (
@@ -632,7 +653,7 @@ const TeamSection = () => {
                           <div className="flex items-center gap-2 mb-3">
                             <div className="w-2 h-2 rounded-full bg-accent/60 animate-pulse" />
                             <span className="text-xs uppercase tracking-widest text-muted-foreground">
-                              {selectedTeam.members.length} Members
+                              {getPeopleLabel(getMemberCount(selectedTeam))}
                             </span>
                           </div>
                         );
@@ -682,7 +703,7 @@ const TeamSection = () => {
                         return <Icon className="w-6 h-6 text-foreground" strokeWidth={1.5} />;
                       })()}
                       <span className="text-xs uppercase tracking-widest text-muted-foreground">
-                        / {selectedTeam.members.length} people /
+                        / {getPeopleLabel(getMemberCount(selectedTeam))} /
                       </span>
                     </div>
                     <h2 className="font-serif text-4xl md:text-5xl lg:text-6xl text-foreground mb-4">
@@ -707,15 +728,10 @@ const TeamSection = () => {
                     </h3>
                     {selectedTeam.members.length > 0 ? (
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        {selectedTeam.members.map((member, idx) => (
+                        {selectedTeam.members.map((member) => (
                           <div 
                             key={member.id}
                             className="group/member flex items-center gap-4 p-4 rounded-2xl bg-secondary/50 hover:bg-secondary transition-colors duration-300"
-                            style={{
-                              opacity: isExpanded ? 1 : 0,
-                              transform: isExpanded ? 'translateX(0)' : 'translateX(-20px)',
-                              transition: `all 0.4s ease-out ${0.4 + idx * 0.08}s`,
-                            }}
                           >
                             <Link
                               to={getMemberProfilePath(member.profiles.public_slug, member.user_id)}
@@ -726,7 +742,8 @@ const TeamSection = () => {
                                 <LazyImage 
                                   src={member.profiles.avatar_url} 
                                   alt={member.profiles.display_name || 'Team member'}
-                                  rootMargin="200px"
+                                  eager
+                                  optimize={{ width: 112, height: 112, quality: 72, fit: 'cover' }}
                                   className="w-full h-full object-cover group-hover/member:scale-110 transition-transform duration-300"
                                 />
                               ) : (
