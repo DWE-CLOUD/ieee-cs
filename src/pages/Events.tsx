@@ -15,6 +15,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import LazyImage from "@/components/LazyImage";
 import { api } from "@/lib/api";
+import { normalizeExternalUrl } from "@/lib/urls";
 
 interface Event {
   id: string;
@@ -235,6 +236,7 @@ const Events = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {filteredEvents.map((event) => {
                 const state = getEventState(event);
+                const registrationUrl = normalizeExternalUrl(event.registration_url);
 
                 return (
                   <article
@@ -296,9 +298,9 @@ const Events = () => {
                       </div>
 
                       <div className="mt-6">
-                        {event.registration_url ? (
+                        {registrationUrl ? (
                           <a
-                            href={event.registration_url}
+                            href={registrationUrl}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-foreground text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity"

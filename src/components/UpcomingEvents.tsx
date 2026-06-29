@@ -5,6 +5,7 @@ import { differenceInCalendarDays, format, isToday, isTomorrow } from "date-fns"
 import LazyImage from "@/components/LazyImage";
 import SmartLink from "@/components/SmartLink";
 import { useHomeContent } from "@/components/home/HomeContentProvider";
+import { normalizeExternalUrl } from "@/lib/urls";
 
 interface Event {
   id: string;
@@ -95,6 +96,7 @@ const UpcomingEvents = () => {
 
   const renderEventCard = (event: Event, featured = false) => {
     const state = getEventState(event);
+    const registrationUrl = normalizeExternalUrl(event.registration_url);
 
     return (
       <article
@@ -170,9 +172,9 @@ const UpcomingEvents = () => {
               View details
               <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
             </SmartLink>
-            {event.registration_url && state !== "past" && (
+            {registrationUrl && state !== "past" && (
               <a
-                href={event.registration_url}
+                href={registrationUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-accent text-accent-foreground font-medium text-sm transition-all hover:opacity-90"
